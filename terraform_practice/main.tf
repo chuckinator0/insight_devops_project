@@ -116,7 +116,20 @@ resource "aws_instance" "chef-server" {
 }
 
 # Provision chef workstation
+resource "aws_instance" "chef-workstation" {
+  ami = "${lookup(var.amis, var.aws_region)}"
+  instance_type = "t2.micro"
+  key_name = "${var.keypair_name}"
+  count = 1
 
+  vpc_security_group_ids      = ["${module.vpc.default_security_group_id}", "${module.open-ssh-sg.this_security_group_id}"]
+  subnet_id                   = "${module.vpc.public_subnets[0]}"
+  associate_public_ip_address = true
+
+  tags {
+    Name = "chef-workstation"
+  }
+}
 
 
 
