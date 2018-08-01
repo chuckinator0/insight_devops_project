@@ -1,0 +1,20 @@
+# Compiled files
+*.tfstate
+*.tfstate.backup
+
+# Module directory
+.terraform/
+
+# Ignore aws-ops-insight
+aws-ops-insight/
+
+# Ignore AWS credentials
+account_id
+chuck-IAM-keypair.pem
+credentials.csv
+
+# Ignore Chef stuff
+.chef/
+.rake_test_cache
+.chef/*.pem
+.chef/encrypted_data_bag_secret
