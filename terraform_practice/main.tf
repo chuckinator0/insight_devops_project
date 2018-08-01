@@ -90,7 +90,7 @@ resource "aws_instance" "kafka-test" {
   key_name = "${var.keypair_name}"
   count = 1
 
-  vpc_security_group_ids      = ["${module.vpc.default_security_group_id}"]
+  vpc_security_group_ids      = ["${module.vpc.default_security_group_id}","${module.open-ssh-sg.this_security_group_id}"]
   subnet_id                   = "${module.vpc.public_subnets[0]}"
   associate_public_ip_address = true
 
