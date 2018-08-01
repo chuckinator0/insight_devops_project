@@ -7,12 +7,19 @@ This journal is my way of processing what I'm learning and archiving some steps 
 I have a dropbox link to the data that will be used in the pipeline. Downloading the large file failed multiple times, and I got frustrated, so I figured out how to download the file into an EC2 instance and transfer the file to S3 storage.
 
 First, ssh into the ec2 instance. Download the file directly to the EC2 instance using the download link:
+
 ```wget <download url>```
+
 Install awscli (amazon's command line interface tool):
+
 ```sudo apt install awscli```
+
 Then use the command 
+
 ```AWS_ACCESS_KEY_ID=xxxx AWS_SECRET_ACCESS_KEY=xxxx aws s3 cp <file> s3://my-bucket/```
+
 The ec2 instance doesn't have access to my local environment variables (I don't think...I would like clarification on how to pass these to the remote instance), so I had to put those in. The key commands here were:
+
 ```aws s3 cp <file> <bucket>```
 
 # Setting up Chef server
@@ -29,7 +36,9 @@ I am following [this guide](https://www.digitalocean.com/community/tutorials/how
   There was a slight wrinkle during the workstation setup. when using the command `knife.rb` file and using the `knife client list` command, I had to specify the chef server IP address `ip-10-0-0-11.us-west-2.compute.internal` rather than just `10.0.0.11`.
 
 To bootstrap the kafka-test machine as a chef client, I had to use the command
+
 ```knife bootstrap 10.0.0.13 -N kafka-test -x ubuntu --sudo```
+
 The 10.0.0.13 is the private IP of my kafka-test instance. The `-N` option specifies that "kafka-test" is going to be the name of the new chef client. The `-x` option is used to specify the username to ssh to. The `--sudo` option enables sudo privileges so the client can get bootstrapped (which means it's now under the control of the chef server).
 
 I'm now on to [the next part](https://www.digitalocean.com/community/tutorials/how-to-create-simple-chef-cookbooks-to-manage-infrastructure-on-ubuntu) of the guide to create a chef cookbook to configure my kafka-test node.
