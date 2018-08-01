@@ -25,7 +25,14 @@ I am following [this guide](https://www.digitalocean.com/community/tutorials/how
   + email: my mfa email
   + organization short name: insight
   + organization long name: "Chuck Insight Project"
+
   There was a slight wrinkle during the workstation setup. when using the command `knife.rb` file and using the `knife client list` command, I had to specify the chef server IP address `ip-10-0-0-11.us-west-2.compute.internal` rather than just `10.0.0.11`.
+
+To bootstrap the kafka-test machine as a chef client, I had to use the command
+```knife bootstrap 10.0.0.13 -N kafka-test -x ubuntu --sudo```
+The 10.0.0.13 is the private IP of my kafka-test instance. The `-N` option specifies that "kafka-test" is going to be the name of the new chef client. The `-x` option is used to specify the username to ssh to. The `--sudo` option enables sudo privileges so the client can get bootstrapped (which means it's now under the control of the chef server).
+
+I'm now on to [the next part](https://www.digitalocean.com/community/tutorials/how-to-create-simple-chef-cookbooks-to-manage-infrastructure-on-ubuntu) of the guide to create a chef cookbook to configure my kafka-test node.
 
 # Terraform Help
 
