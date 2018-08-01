@@ -100,7 +100,7 @@ resource "aws_instance" "kafka-test" {
 }
 
 # Provision chef server
-resource "aws_instance" "chef-test" {
+resource "aws_instance" "chef-server" {
   ami = "${lookup(var.amis, var.aws_region)}"
   instance_type = "t2.medium"
   key_name = "${var.keypair_name}"
@@ -111,9 +111,11 @@ resource "aws_instance" "chef-test" {
   associate_public_ip_address = true
 
   tags {
-    Name = "chef-test"
+    Name = "chef-server"
   }
 }
+
+# Provision chef workstation
 
 
 
