@@ -25,6 +25,7 @@ I am following [this guide](https://www.digitalocean.com/community/tutorials/how
   + email: my mfa email
   + organization short name: insight
   + organization long name: "Chuck Insight Project"
+  There was a slight wrinkle. when using the command `knife.rb` file and using the `knife client list` command, I had to specify the chef server IP address `ip-10-0-0-11.us-west-2.compute.internal` rather than just `10.0.0.11`.
 
 # Terraform Help
 
