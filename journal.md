@@ -23,11 +23,12 @@ I am following [this guide](https://www.digitalocean.com/community/tutorials/how
 ++ username, first name, last name: admin
 ++ admin.pem, insight-validator.pem
 ++ email: my mfa email
-++ organization short name: insight-project (if I remember correctly from yesterday)
+++ organization short name: insight
+++ organization long name: "Chuck Insight Project"
 
 # Terraform Help
 
 + [VPC module documentation](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/1.30.0)
 + [AWS security group module documentation](https://registry.terraform.io/modules/terraform-aws-modules/security-group/aws/1.9.0)
-+[AWS security group submodules](https://github.com/terraform-aws-modules/terraform-aws-security-group/tree/master/modules)
++ [AWS security group submodules](https://github.com/terraform-aws-modules/terraform-aws-security-group/tree/master/modules)
 + The machine image I am using is `ami-833e60fb`, which is an Ubuntu 16.04 image with username `ubuntu`.
