@@ -20,7 +20,7 @@ output "instance_ips" {
   value = [
   # 'name' + ' ' + 'ip address'
   "${aws_instance.kafka-test.tags.Name} ${aws_instance.kafka-test.public_ip}",
-  "${aws_instance.chef-server.tags.Name} ${aws_instance.chef-server.public_ip}",
+  "${aws_instance.chef-test.tags.Name} ${aws_instance.chef-test.public_ip}",
   "${aws_instance.chef-workstation.tags.Name} ${aws_instance.chef-workstation.public_ip}"
   ]
 }
