@@ -17,9 +17,11 @@ output "public_subnets" {
 
 # Output public IP addresses
 output "instance_public_ips" {
-  value = [
+  value = [ 
+  # public ip for all kafka-test server in the cluster
+  "${join(",", aws_instance.kafka-test.*.public_ip)}",
+
   # 'name' + ' ' + 'ip address'
-  "${aws_instance.kafka-test.tags.Name} ${aws_instance.kafka-test.public_ip}",
   "${aws_instance.chef-test.tags.Name} ${aws_instance.chef-test.public_ip}",
   "${aws_instance.chef-workstation.tags.Name} ${aws_instance.chef-workstation.public_ip}"
   ]
@@ -28,8 +30,10 @@ output "instance_public_ips" {
 # Output private IP addresses
 output "instance_private_ips" {
   value = [
+  # private ip for all kafka-test servers in the cluster
+  "${join(",", aws_instance.kafka-test.*.private_ip)}",
+
   # 'name' + ' ' + 'ip address'
-  "${aws_instance.kafka-test.tags.Name} ${aws_instance.kafka-test.private_ip}",
   "${aws_instance.chef-test.tags.Name} ${aws_instance.chef-test.private_ip}",
   "${aws_instance.chef-workstation.tags.Name} ${aws_instance.chef-workstation.private_ip}"
   ]

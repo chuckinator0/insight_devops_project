@@ -29,8 +29,4 @@ variable "amis" {
   }
 }
 
-variable "cluster_name" {
-  description = "The name for your instances in your cluster" 
-  default   = "cluster"
-}
 

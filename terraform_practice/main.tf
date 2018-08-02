@@ -83,19 +83,23 @@ resource "aws_s3_bucket" "chuck-financial-data" {
   }
 }
 
-# Provision kafka server
+# Provision kafka cluster
 resource "aws_instance" "kafka-test" {
   ami = "${lookup(var.amis, var.aws_region)}"
   instance_type = "t2.micro"
   key_name = "${var.keypair_name}"
-  count = 1
+  count = 3
 
   vpc_security_group_ids      = ["${module.vpc.default_security_group_id}","${module.open-ssh-sg.this_security_group_id}"]
   subnet_id                   = "${module.vpc.public_subnets[0]}"
   associate_public_ip_address = true
 
   tags {
-    Name = "kafka-test"
+    Name        = "kafka-${count.index}"
+    Owner       = "${var.fellow_name}"
+    Environment = "dev"
+    Terraform   = "true"
+    Cluster     = "kafka"
   }
 }
 
@@ -131,6 +135,11 @@ resource "aws_instance" "chef-workstation" {
   }
 }
 
-
+# Configuration for an Elastic IP to add to nodes
+resource "aws_eip" "elastic_ips_for_instances" {
+  vpc       = true
+  instance  = "${element(aws_instance.kafka-test.*.id, count.index)}"
+  count     = "${aws_instance.kafka-test.count}"
+}
 
 
