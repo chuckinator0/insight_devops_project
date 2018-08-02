@@ -53,3 +53,15 @@ I'm currently stuck at the point where I am running the command `sudo chef-clien
 + [AWS security group module documentation](https://registry.terraform.io/modules/terraform-aws-modules/security-group/aws/1.9.0)
 + [AWS security group submodules](https://github.com/terraform-aws-modules/terraform-aws-security-group/tree/master/modules)
 + The machine image I am using is `ami-833e60fb`, which is an Ubuntu 16.04 image with username `ubuntu`.
+
+# Pipeline Details
+
+I talked with Tao, who developed the pipeline I'm building on, and he gave me some configuration details for his infrastructure:
++ He gave me a config.py file that has some configuration information for kafka and spark
++ 3 kafka servers, 4 spark servers, 1 cassandra db, 1 flask front end web server
++ Requirements:
+  + kafka version 1.0.0
+  + Spark version 2.2.1 Using Scala version 2.11.8
+  + cassandra 3.11.2
+  + pyspark, cassandra-driver "and one kafka-spark connector "(sorry I forgot which one I used...)"
+  + kafka 40 partitions and 2 replications
