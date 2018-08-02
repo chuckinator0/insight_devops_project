@@ -1,0 +1,15 @@
+.coverage
+.bundle
+.kitchen
+.kitchen.local.yml
+.vagrant
+.ruby-gemset
+Berksfile.lock
+kafka-cookbook-*.tar.gz
+/**/vendor/**/bundle/
+/pkg
+TODO.md
+terraform.tfstate**
+.envrc
+.aws.json
+*.plan

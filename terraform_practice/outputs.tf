@@ -19,6 +19,7 @@ output "public_subnets" {
 output "instance_public_ips" {
   value = [ 
   # public ip for all kafka-test server in the cluster
+  "kafka instances:",
   "${join(",", aws_instance.kafka-test.*.public_ip)}",
 
   # 'name' + ' ' + 'ip address'
@@ -31,6 +32,7 @@ output "instance_public_ips" {
 output "instance_private_ips" {
   value = [
   # private ip for all kafka-test servers in the cluster
+  "Kafka instances:",
   "${join(",", aws_instance.kafka-test.*.private_ip)}",
 
   # 'name' + ' ' + 'ip address'
