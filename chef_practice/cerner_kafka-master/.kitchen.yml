@@ -1,0 +1,68 @@
+---
+driver_plugin: vagrant
+driver_config:
+  vm_hostname: kafkahost
+  customize:
+    memory: 1024
+    cpus: 2
+    # Configure network interface to use hosts DNS resolver.  Doing this makes installing Gems and other network tasks significantly faster.
+    natdnsproxy1: 'off'
+    natdnshostresolver1: 'off'
+
+provisioner:
+  name: chef_solo
+
+platforms:
+  - name: ubuntu-15.10
+    run_list:
+    # We only include apt because of an issue installing java where ubuntu
+    # requires an apt-get update in order to successfully run
+    - recipe[apt]
+    # Curl is used by testing
+    - recipe[curl]
+  - name: centos-7.2
+    run_list:
+      # Curl is used by testing
+      - recipe[curl]
+
+suites:
+- name: default
+  run_list:
+  - recipe[apache_zookeeper]
+  - recipe[cerner_kafka]
+  - recipe[cerner_kafka::offset_monitor]
+  attributes:
+    java:
+      # Kafka 0.9 require java 7 or higher
+      jdk_version: 7
+    kafka:
+      zookeepers:
+        - localhost:2181
+      lib_jars:
+        - http://search.maven.org/remotecontent?filepath=io/dropwizard/metrics/metrics-logback/3.1.0/metrics-logback-3.1.0.jar
+      server.properties:
+        default.replication.factor: 1
+        bogus.for.testing: server
+      log4j.properties:
+        bogus.for.testing: log4j
+      env_vars:
+        KAFKA_HEAP_OPTS: '"-Xmx256m -Xms256m"'
+        BOGUS_VAR: TEST_VALUE
+        # Override KAFKA_OPTS so that Kerberos is not actually enabled for the broker
+        KAFKA_OPTS: '"-Dsome.system.property=ok"'
+      offset_monitor:
+        port: 8088
+        options:
+          --zkSessionTimeout: 30.seconds
+      shutdown_timeout: 35
+      kerberos:
+        enable: true
+        enable_zk: true
+        keytab: /etc/kafka.keytab
+        realm: REALM.NET
+        krb5_properties:
+          doNotPrompt: true
+          stringProp: test
+        zk_krb5_properties:
+          clearPass: false
+          stringBoolean: 'false'

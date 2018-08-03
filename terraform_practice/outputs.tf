@@ -15,28 +15,37 @@ output "public_subnets" {
   value       = ["${module.vpc.public_subnets}"]
 }
 
-# Output public IP addresses
-output "instance_public_ips" {
-  value = [ 
-  # public ip for all kafka-test server in the cluster
-  "kafka instances:",
-  "${join(",", aws_instance.kafka-test.*.public_ip)}",
-
-  # 'name' + ' ' + 'ip address'
-  "${aws_instance.chef-test.tags.Name} ${aws_instance.chef-test.public_ip}",
-  "${aws_instance.chef-workstation.tags.Name} ${aws_instance.chef-workstation.public_ip}"
+output "master_ips" {
+  value = [
+  "kafka-master public ip: ${aws_instance.kafka-master.public_ip}",
+  "kafka-master private ip: ${aws_instance.kafka-master.private_ip}",
+  "spark-master public ip: ${aws_instance.spark-master.public_ip}",
+  "spark-master private ip: ${aws_instance.spark-master.private_ip}"
   ]
 }
 
-# Output private IP addresses
-output "instance_private_ips" {
+output "kafka_workers_ips" {
   value = [
-  # private ip for all kafka-test servers in the cluster
-  "Kafka instances:",
-  "${join(",", aws_instance.kafka-test.*.private_ip)}",
+  "kafka-worker public ips: ${join(",", aws_instance.kafka-workers.*.public_ip)}",
+  "kafka-worker private ips: ${join(",", aws_instance.kafka-workers.*.private_ip)}"
+  ]
+}
 
-  # 'name' + ' ' + 'ip address'
-  "${aws_instance.chef-test.tags.Name} ${aws_instance.chef-test.private_ip}",
-  "${aws_instance.chef-workstation.tags.Name} ${aws_instance.chef-workstation.private_ip}"
+output "spark_workers_ips" {
+  value = [
+  "spark-workers public ips: ${join(",", aws_instance.spark-workers.*.public_ip)}",
+  "spark-workers private ips: ${join(",", aws_instance.spark-workers.*.private_ip)}"
+  ]
+}
+
+# Output public IP addresses
+output "other_ips" {
+  value = [ 
+  "chef server public: ${aws_instance.chef-test.public_ip}",
+  "chef server private: ${aws_instance.chef-test.private_ip}",
+  "chef workstation public: ${aws_instance.chef-workstation.public_ip}",
+  "chef workstation private: ${aws_instance.chef-workstation.private_ip}",
+  "cassandra public: ${aws_instance.cassandra.public_ip}",
+  "cassandra private: ${aws_instance.cassandra.private_ip}"
   ]
 }

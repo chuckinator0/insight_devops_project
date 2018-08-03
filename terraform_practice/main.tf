@@ -35,8 +35,8 @@ module "vpc" {
 
   cidr             = "10.0.0.0/26"
   azs              = ["${data.aws_availability_zones.all.names}"]
-  public_subnets   = ["10.0.0.0/28"] # IP's 10.0.0.0 through 10.0.0.15, 16 total
-  private_subnets   = ["10.0.0.16/28"] # IP's 10.0.0.16 through 10.0.0.31, 16 total
+  public_subnets   = ["10.0.0.0/27"] # IP's 10.0.0.0 through 10.0.0.31, 32 total
+  private_subnets   = ["10.0.0.32/27"] # IP's 10.0.0.32 through 10.0.0.63, 32 total
 
   enable_dns_support   = true
   enable_dns_hostnames = true
@@ -83,10 +83,73 @@ resource "aws_s3_bucket" "chuck-financial-data" {
   }
 }
 
-# Provision kafka cluster
-resource "aws_instance" "kafka-test" {
+# Provision kafka master
+resource "aws_instance" "kafka-master" {
   ami = "${lookup(var.amis, var.aws_region)}"
-  instance_type = "t2.micro"
+  instance_type = "m4.large"
+  key_name = "${var.keypair_name}"
+
+  vpc_security_group_ids      = ["${module.vpc.default_security_group_id}","${module.open-ssh-sg.this_security_group_id}"]
+  subnet_id                   = "${module.vpc.public_subnets[0]}"
+  associate_public_ip_address = true
+  count                       = 1
+
+  tags {
+    Name        = "kafka-master"
+    Owner       = "${var.fellow_name}"
+    Environment = "dev"
+    Terraform   = "true"
+    Cluster     = "kafka"
+    ClusterRole = "master"
+  }
+}
+
+# Provision kafka workers
+resource "aws_instance" "kafka-workers" {
+  ami = "${lookup(var.amis, var.aws_region)}"
+  instance_type = "m4.large"
+  key_name = "${var.keypair_name}"
+  count = 2
+
+  vpc_security_group_ids      = ["${module.vpc.default_security_group_id}","${module.open-ssh-sg.this_security_group_id}"]
+  subnet_id                   = "${module.vpc.public_subnets[0]}"
+  associate_public_ip_address = true
+
+  tags {
+    Name        = "kafka-worker-${count.index}"
+    Owner       = "${var.fellow_name}"
+    Environment = "dev"
+    Terraform   = "true"
+    Cluster     = "kafka"
+    ClusterRole = "worker"
+  }
+}
+
+# Provision spark-streaming master
+resource "aws_instance" "spark-master" {
+  ami = "${lookup(var.amis, var.aws_region)}"
+  instance_type = "m4.large"
+  key_name = "${var.keypair_name}"
+
+  vpc_security_group_ids      = ["${module.vpc.default_security_group_id}","${module.open-ssh-sg.this_security_group_id}"]
+  subnet_id                   = "${module.vpc.public_subnets[0]}"
+  associate_public_ip_address = true
+  count                       = 1
+
+  tags {
+    Name        = "spark-master"
+    Owner       = "${var.fellow_name}"
+    Environment = "dev"
+    Terraform   = "true"
+    Cluster     = "spark"
+    ClusterRole = "master"
+  }
+}
+
+# Provision spark-streaming workers
+resource "aws_instance" "spark-workers" {
+  ami = "${lookup(var.amis, var.aws_region)}"
+  instance_type = "m4.large"
   key_name = "${var.keypair_name}"
   count = 3
 
@@ -95,11 +158,31 @@ resource "aws_instance" "kafka-test" {
   associate_public_ip_address = true
 
   tags {
-    Name        = "kafka-${count.index}"
+    Name        = "spark-worker-${count.index}"
     Owner       = "${var.fellow_name}"
     Environment = "dev"
     Terraform   = "true"
-    Cluster     = "kafka"
+    Cluster     = "spark"
+    ClusterRole = "worker"
+  }
+}
+
+# Provision cassandra database
+resource "aws_instance" "cassandra" {
+  ami = "${lookup(var.amis, var.aws_region)}"
+  instance_type = "m4.large"
+  key_name = "${var.keypair_name}"
+
+  vpc_security_group_ids      = ["${module.vpc.default_security_group_id}","${module.open-ssh-sg.this_security_group_id}"]
+  subnet_id                   = "${module.vpc.public_subnets[0]}"
+  associate_public_ip_address = true
+  count                       = 1
+
+  tags {
+    Name        = "cassandra"
+    Owner       = "${var.fellow_name}"
+    Environment = "dev"
+    Terraform   = "true"
   }
 }
 
@@ -115,7 +198,7 @@ resource "aws_instance" "chef-test" {
   associate_public_ip_address = true
 
   tags {
-    Name = "chef-test"
+    Name = "chef-server"
   }
 }
 
@@ -138,8 +221,8 @@ resource "aws_instance" "chef-workstation" {
 # Configuration for an Elastic IP to add to nodes
 resource "aws_eip" "elastic_ips_for_instances" {
   vpc       = true
-  instance  = "${element(aws_instance.kafka-test.*.id, count.index)}"
-  count     = "${aws_instance.kafka-test.count}"
+  instance  = "${element(concat(aws_instance.kafka-master.*.id, aws_instance.kafka-workers.*.id, aws_instance.spark-master.*.id, aws_instance.spark-workers.*.id), count.index)}"
+  count     = "${aws_instance.kafka-master.count + aws_instance.kafka-workers.count + aws_instance.spark-master.count + aws_instance.spark-workers.count}"
 }
 
 
