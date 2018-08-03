@@ -25,7 +25,21 @@ The ec2 instance doesn't have access to my local environment variables (I don't 
 # Setting up Chef server
 
 I am following [this guide](https://www.digitalocean.com/community/tutorials/how-to-set-up-a-chef-12-configuration-management-system-on-ubuntu-14-04-servers#prerequisites-and-goals) for setting up a chef server and a chef workstation. I realize I've been using my local machine as the chef workstation, but I want to use a remote ec2 instance to be the chef workstation. So I'll have a chef server and a chef workstation in AWS.
-+ Should I make a bash script for doing these steps to configure a chef server so that it is easy to set up after a `terraform destroy`?
+
+Bash script to configure the chef server:
+```
+# Download chef 12 for ubuntu 16.04
+wget https://packages.chef.io/files/stable/chef-server/12.17.33/ubuntu/16.04/chef-server-core_12.17.33-1_amd64.deb
+# Install
+sudo dpkg -i chef-server-core_*.deb
+# Reconfigure for local infrastructure
+sudo chef-server-ctl reconfigure
+# Create admin user and put key in admin.pem
+chef-server-ctl user-create admin admin admin charleslarrieu@mfala.org examplepass -f admin.pem
+# Create an organization and make a validator key
+sudo chef-server-ctl org-create insight "Chuck Insight Project" --association_user admin -f insight-validator.pem
+```
+
 + Some names:
   + username, first name, last name: admin
   + admin.pem, insight-validator.pem
@@ -79,10 +93,14 @@ I plan to look more into the modules to make sure that each service has sensible
 
 I talked with Tao, who developed the pipeline I'm building on, and he gave me some configuration details for his infrastructure:
 + He gave me a config.py file that has some configuration information for kafka and spark
-+ 3 kafka servers, 4 spark servers, 1 cassandra db, 1 flask front end web server
++ 3 kafka servers, 4 spark streaming servers, 1 cassandra db, 1 flask front end web server
 + Requirements:
   + kafka version 1.0.0
   + Spark version 2.2.1 Using Scala version 2.11.8
   + cassandra 3.11.2
   + pyspark, cassandra-driver "and one kafka-spark connector "(sorry I forgot which one I used...)"
   + kafka 40 partitions and 2 replications
+
+  # Misc Questions
+
+  + How can I use a bash script when ssh'ing through multiple machines?
