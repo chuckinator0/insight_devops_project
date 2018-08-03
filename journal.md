@@ -93,9 +93,9 @@ knife client list
 
 To bootstrap the kafka-test machine as a chef client, I had to use the command
 
-```knife bootstrap 10.0.0.13 -N kafka-test -x ubuntu --sudo```
+```knife bootstrap 10.0.0.5 -N kafka-master -x ubuntu --sudo```
 
-The 10.0.0.13 is the private IP of my kafka-test instance. The `-N` option specifies that "kafka-test" is going to be the name of the new chef client. The `-x` option is used to specify the username to ssh to. The `--sudo` option enables sudo privileges so the client can get bootstrapped (which means it's now under the control of the chef server). For now, this seems to be a manual process for each node.
+The 10.0.0.5 is the private IP of my kafka-master instance. The `-N` option specifies that "kafka-test" is going to be the name of the new chef client. The `-x` option is used to specify the username to ssh to. The `--sudo` option enables sudo privileges so the client can get bootstrapped (which means it's now under the control of the chef server). For now, this seems to be a manual process for each node.
 
 I'm now on to [the next part](https://www.digitalocean.com/community/tutorials/how-to-create-simple-chef-cookbooks-to-manage-infrastructure-on-ubuntu) of the guide to create a chef cookbook to configure my kafka-test node.
 
@@ -128,6 +128,7 @@ So it looks like the step of actually installing kafka was skipped due to `not_i
 + [AWS security group module documentation](https://registry.terraform.io/modules/terraform-aws-modules/security-group/aws/1.9.0)
 + [AWS security group submodules](https://github.com/terraform-aws-modules/terraform-aws-security-group/tree/master/modules)
 + The machine image I am using is `ami-833e60fb`, which is an Ubuntu 16.04 image with username `ubuntu`.
++ [A nice blogpost series to get started](https://blog.gruntwork.io/a-comprehensive-guide-to-terraform-b3d32832baca)
 
 I plan to look more into the modules to make sure that each service has sensible security groups.
 
@@ -146,3 +147,4 @@ I talked with Tao, who developed the pipeline I'm building on, and he gave me so
   # Misc Questions
 
   + How can I use a bash script when ssh'ing through multiple machines?
+  + How do I automate "knife bootstrap" to multiple nodes simultaneously? A less manual way would be to craft a bash script that iterates through `knife bootstrap <IPs of kafka nodes> -N kafka-<number of kafka node> -x ubuntu --sudo` for each node
