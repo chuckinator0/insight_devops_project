@@ -6,7 +6,7 @@ default["kafka"]["user"] = "kafka"
 default["kafka"]["group"] = "kafka"
 
 default["kafka"]["scala_version"] = "2.11"
-default["kafka"]["version"] = "0.9.0.0"
+default["kafka"]["version"] = "1.0.0.0"
 default["kafka"]["download_url"] = "https://archive.apache.org/dist/kafka"
 
 default["kafka"]["base_dir"]  = "/opt"
