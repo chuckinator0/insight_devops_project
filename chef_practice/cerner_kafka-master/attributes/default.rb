@@ -6,7 +6,8 @@ default["kafka"]["user"] = "kafka"
 default["kafka"]["group"] = "kafka"
 
 default["kafka"]["scala_version"] = "2.11"
-default["kafka"]["version"] = "1.0.0.0"
+# Change to v 1.0.2
+default["kafka"]["version"] = "1.0.2"
 default["kafka"]["download_url"] = "https://archive.apache.org/dist/kafka"
 
 default["kafka"]["base_dir"]  = "/opt"
@@ -37,9 +38,10 @@ default["kafka"]["env_vars"]["KAFKA_HEAP_OPTS"] = "\"-Xmx4G -Xms4G\""
 default["kafka"]["env_vars"]["KAFKA_JVM_PERFORMANCE_OPTS"] = "\"-XX:PermSize=48m -XX:MaxPermSize=48m -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35\""
 default["kafka"]["lib_jars"] = []
 
-default["kafka"]["logrotate"]["path"] = [node["kafka"]["service"]["stdout"], node["kafka"]["service"]["stderr"]]
-default["kafka"]["logrotate"]["frequency"] = 'daily'
-default["kafka"]["logrotate"]["rotate"] = 5
+## Commenting out logrotate
+#default["kafka"]["logrotate"]["path"] = [node["kafka"]["service"]["stdout"], node["kafka"]["service"]["stderr"]]
+#default["kafka"]["logrotate"]["frequency"] = 'daily'
+#default["kafka"]["logrotate"]["rotate"] = 5
 
 default["kafka"]["server.properties"] = {}
 
@@ -70,6 +72,7 @@ default["kafka"]["log4j.properties"]["log4j.logger.kafka.controller"] = "INFO, c
 default["kafka"]["log4j.properties"]["log4j.additivity.kafka.controller"] = "false"
 default["kafka"]["log4j.properties"]["log4j.logger.state.change.logger"] = "INFO, stateChangeAppender"
 default["kafka"]["log4j.properties"]["log4j.additivity.state.change.logger"] = "false"
+
 
 #Offset monitor config
 default["kafka"]["offset_monitor"]["url"] = "https://github.com/quantifind/KafkaOffsetMonitor/releases/download/v0.2.1/KafkaOffsetMonitor-assembly-0.2.1.jar"

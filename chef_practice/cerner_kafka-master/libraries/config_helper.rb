@@ -23,7 +23,8 @@ class CernerKafkaHelper
       end
 
       if broker_id.nil?
-        if node['kafka']['version'].start_with? '0.8'
+        # Change v to 1.0.2
+        if node['kafka']['version'].start_with? '1.0.2'
           Chef::Log.error("Unable to find #{node['fqdn']}, #{node['ipaddress']} or "\
                           "#{node['hostname']} in node['kafka']['brokers'] : #{node['kafka']['brokers']}")
         else

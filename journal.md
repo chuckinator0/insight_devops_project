@@ -26,7 +26,7 @@ The ec2 instance doesn't have access to my local environment variables (I don't 
 
 I am following [this guide](https://www.digitalocean.com/community/tutorials/how-to-set-up-a-chef-12-configuration-management-system-on-ubuntu-14-04-servers#prerequisites-and-goals) for setting up a chef server and a chef workstation. I realize I've been using my local machine as the chef workstation, but I want to use a remote ec2 instance to be the chef workstation. So I'll have a chef server and a chef workstation in AWS.
 
-Bash script to configure the chef server:
+I wrote a bash script to configure the chef server:
 ```
 # Download chef 12 for ubuntu 16.04
 wget https://packages.chef.io/files/stable/chef-server/12.17.33/ubuntu/16.04/chef-server-core_12.17.33-1_amd64.deb
@@ -39,7 +39,7 @@ chef-server-ctl user-create admin admin admin charleslarrieu@mfala.org examplepa
 # Create an organization and make a validator key
 sudo chef-server-ctl org-create insight "Chuck Insight Project" --association_user admin -f insight-validator.pem
 ```
-Bash script to configure chef workstation (after ssh'ing into the workstation):
+i wrote a bash script to configure chef workstation (after ssh'ing into the workstation):
 ```
 # Install git, clone chef-repo, and start version control
 sudo apt-get update
@@ -91,11 +91,11 @@ knife client list
 
   There was a slight wrinkle during the workstation setup. when using the command `knife.rb` file and using the `knife client list` command, I had to specify the chef server IP address `ip-10-0-0-20.us-west-2.compute.internal` rather than just `10.0.0.20`.
 
-To bootstrap the kafka-test machine as a chef client, I had to use the command
+To bootstrap the kafka-test machine as a chef client, I had to make sure I was in the /chef-repo and use the command
 
 ```knife bootstrap 10.0.0.5 -N kafka-master -x ubuntu --sudo```
 
-The 10.0.0.5 is the private IP of my kafka-master instance. The `-N` option specifies that "kafka-test" is going to be the name of the new chef client. The `-x` option is used to specify the username to ssh to. The `--sudo` option enables sudo privileges so the client can get bootstrapped (which means it's now under the control of the chef server). For now, this seems to be a manual process for each node.
+The 10.0.0.5 is the private IP of my kafka-master instance. The `-N` option specifies that "kafka-master" is going to be the name of the new chef client. The `-x` option is used to specify the username to ssh to. The `--sudo` option enables sudo privileges so the client can get bootstrapped (which means it's now under the control of the chef server). For now, this seems to be a manual process for each node.
 
 I'm now on to [the next part](https://www.digitalocean.com/community/tutorials/how-to-create-simple-chef-cookbooks-to-manage-infrastructure-on-ubuntu) of the guide to create a chef cookbook to configure my kafka-test node.
 
@@ -122,6 +122,8 @@ Recipe: kafka::_install
 
 So it looks like the step of actually installing kafka was skipped due to `not_if`, whatever that means. Looking into `_install.rb`, the `not_if` clause is `not_if { kafka_installed? }`, so I think this just means kafka is already installed. However, `grep -r "kafka" \usr` didn't return anything to indicate that kafka has been installed (assuming it would be installed there?), so ultimately this didn't work. In the code of `_install.rb`, it seems there is a path to the `.tgz` file you need to install kafka, but in my case, I'd need to be downloading that `tgz` from a download link from the kafka site. I found another kafka cookcook in [this github repo](https://github.com/cerner/cerner_kafka) whose documentation seems much clearer at first glance. I think the first repo was addressing a particular technical issue in a particular setup, whereas this repo seems to be aimed at someone like me trying to set things up for the first time. In the meantime, I think I might as well use terraform to set up an infrastructure that makes sense for my pipeline rather than keep messing with this test setup. Then I can look into this new kafka cookbook and hope to get things up and running.
 
+I have chef nodes bootstrapped in the new infrastructure: kafka-master, kafka-worker1, and kafka-worker2.
+
 # Terraform Help
 
 + [VPC module documentation](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/1.30.0)
@@ -139,7 +141,7 @@ I talked with Tao, who developed the pipeline I'm building on, and he gave me so
 + 3 kafka servers, 4 spark streaming servers, 1 cassandra db, 1 flask front end web server
 + Requirements:
   + kafka version 1.0.0
-  + Spark version 2.2.1 Using Scala version 2.11.8
+  + Sparkstreaming version 2.2.1 Using Scala version 2.11.8
   + cassandra 3.11.2
   + pyspark, cassandra-driver "and one kafka-spark connector "(sorry I forgot which one I used...)"
   + kafka 40 partitions and 2 replications

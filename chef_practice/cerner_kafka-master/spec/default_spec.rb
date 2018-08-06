@@ -9,13 +9,14 @@ describe 'cerner_kafka::default' do
     end
   end
 
-  context 'with version set to 0.8.0' do
+# Changed to v1.0.2
+  context 'with version set to 1.0.2' do
 
     let(:chef_run) do
       ChefSpec::SoloRunner.new do |node|
         node.set['kafka']['brokers'] = ['chefspec']
         node.set['kafka']['zookeepers'] = ['localhost:2181']
-        node.set['kafka']['version'] = '0.8.0'
+        node.set['kafka']['version'] = '1.0.2'
       end
     end
 
@@ -33,13 +34,14 @@ describe 'cerner_kafka::default' do
 
   end
 
-  context 'with version set to 0.8.1' do
+# Change to v1.0.2
+  context 'with version set to 1.0.2' do
 
     let(:chef_run) do
       ChefSpec::SoloRunner.new do |node|
         node.set['kafka']['brokers'] = ['chefspec']
         node.set['kafka']['zookeepers'] = ['localhost:2181']
-        node.set['kafka']['version'] = '0.8.1'
+        node.set['kafka']['version'] = '1.0.2'
       end
     end
 
@@ -57,13 +59,14 @@ describe 'cerner_kafka::default' do
 
   end
 
-  context 'with version set to 0.8.2' do
+  # Change to 1.0.2
+  context 'with version set to 1.0.2' do
 
     let(:chef_run) do
       ChefSpec::SoloRunner.new do |node|
         node.set['kafka']['brokers'] = ['chefspec']
         node.set['kafka']['zookeepers'] = ['localhost:2181']
-        node.set['kafka']['version'] = '0.8.2'
+        node.set['kafka']['version'] = '1.0.2'
       end
     end
 
@@ -83,11 +86,12 @@ describe 'cerner_kafka::default' do
 
   context 'with log.dirs set to many directories' do
 
+    # change to v 1.0.2
     let(:chef_run) do
       ChefSpec::SoloRunner.new do |node|
         node.set['kafka']['brokers'] = ['chefspec']
         node.set['kafka']['zookeepers'] = ['localhost:2181']
-        node.set['kafka']['version'] = '0.8.2'
+        node.set['kafka']['version'] = '1.0.2'
         node.set['kafka']['server.properties']['log.dirs'] = '/tmp/k1,/tmp/k2,/tmp/k3'
       end
     end
@@ -103,11 +107,12 @@ describe 'cerner_kafka::default' do
 
   context 'without log.dirs set' do
 
+    # change to 1.0.2
     let(:chef_run) do
       ChefSpec::SoloRunner.new do |node|
         node.set['kafka']['brokers'] = ['chefspec']
         node.set['kafka']['zookeepers'] = ['localhost:2181']
-        node.set['kafka']['version'] = '0.8.2'
+        node.set['kafka']['version'] = '1.0.2'
         node.set['kafka']['server.properties'] = {}
       end
     end

@@ -25,8 +25,9 @@ node.default["kafka"]["log4j.properties"]["log4j.appender.controllerAppender.Fil
 
 # We currently ignore FC047 - http://www.foodcritic.io/#FC047) due to a bug in foodcritic giving false
 # positives (https://github.com/acrmp/foodcritic/issues/225)
-node.default["ulimit"]["users"][node["kafka"]["user"]]["filehandle_limit"] = 32768 # ~FC047
-node.default["ulimit"]["users"][node["kafka"]["user"]]["process_limit"] = 1024 # ~FC047
+## Comment out references to "ulimit" 
+##node.default["ulimit"]["users"][node["kafka"]["user"]]["filehandle_limit"] = 32768 # ~FC047
+##node.default["ulimit"]["users"][node["kafka"]["user"]]["process_limit"] = 1024 # ~FC047
 
 # Build the binary_url from download_url, scala_version and version. This url is what we actually use to download the binary file
 node.default["kafka"]["binary_url"] = "#{node["kafka"]["download_url"]}/#{node["kafka"]["version"]}/kafka_#{node["kafka"]["scala_version"]}-#{node["kafka"]["version"]}.tgz"
@@ -36,8 +37,9 @@ kafkaFullDirectoryName = "kafka_#{node["kafka"]["scala_version"]}-#{node["kafka"
 log "Installing kafka_#{node["kafka"]["scala_version"]}-#{node["kafka"]["version"]}"
 log "Binary URL : #{node["kafka"]["binary_url"]}"
 
-include_recipe "java"
-include_recipe "ulimit"
+## Comment out these "inlcude recipes" to try to get the cookbook to upload
+##include_recipe "java"
+##include_recipe "ulimit"
 
 # manage user and group
 include_recipe "cerner_kafka::_user_group"
@@ -148,7 +150,8 @@ template "#{node["kafka"]["install_dir"]}/bin/kafka-server-stop.sh" do
   mode  00755
   # Overwrite kafka-server-start.sh script since it has a bug in 0.8.0/0.8.1 (KAFKA-1189). This is fixed in 0.8.2
   # We use start_with? instead of == to handle the case of 0.8.0.X or 0.8.1.X releases.
-  only_if { node["kafka"]["version"].start_with? "0.8.0" or node["kafka"]["version"].start_with? "0.8.1" }
+  # Changing version to 1.0.2
+  only_if { node["kafka"]["version"].start_with? "1.0.2" or node["kafka"]["version"].start_with? "1.0.2" }
 end
 
 template "#{node["kafka"]["install_dir"]}/bin/kafka-server-start.sh" do
@@ -158,7 +161,8 @@ template "#{node["kafka"]["install_dir"]}/bin/kafka-server-start.sh" do
   mode  00755
   # Overwrite kafka-server-start.sh script since it has a bug in 0.8.0/0.8.1 (KAFKA-1278). This is fixed in 0.8.2
   # We use start_with? instead of == to handle the case of 0.8.0.X or 0.8.1.X releases.
-  only_if { node["kafka"]["version"].start_with? "0.8.0" or node["kafka"]["version"].start_with? "0.8.1" }
+  # Change to 1.0.2
+  only_if { node["kafka"]["version"].start_with? "1.0.2" or node["kafka"]["version"].start_with? "1.0.2" }
 end
 
 # Configure kafka properties

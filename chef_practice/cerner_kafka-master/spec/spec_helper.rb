@@ -5,8 +5,9 @@ require 'chef/node'
 require_relative '../libraries/config_helper.rb'
 
 RSpec.configure do |config|
-  config.platform = 'redhat'
-  config.version = '6.6'
+  # Change to Ubuntu 16.04
+  config.platform = 'Ubuntu'
+  config.version = '16.04'
 end
 
 at_exit { ChefSpec::Coverage.report! }

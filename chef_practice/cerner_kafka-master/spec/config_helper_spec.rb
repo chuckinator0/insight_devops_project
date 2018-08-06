@@ -5,9 +5,13 @@ describe CernerKafkaHelper do
     node = Chef::Node.new
     node.default['kafka']['server.properties'] = {}
     node.default['hostname'] = 'broker1'
-    node.default['kafka']['version'] = '0.8.2.1'
+    # Changed to v1.0.2 since Tao's pipeline uses v1 and 1.0.2 is the version
+    # still supported on kafka's download page
+    node.default['kafka']['version'] = '1.0.2'
+    # Not sure if I should change the broker names or the zookeeper names
     node.default['kafka']['brokers'] = ['broker1', 'broker2', 'broker3']
-    node.default['kafka']['zookeepers'] = ['zoo1:2181', 'zoo2:2181', 'zoo3:2181']
+    # replace with my public dns
+    node.default['kafka']['zookeepers'] = ['ec2-35-155-165-200.us-west-2.compute.amazonaws.com:2181', 'ec2-52-37-224-171.us-west-2.compute.amazonaws.com:2181', 'ec2-54-71-117-215.us-west-2.compute.amazonaws.com:2181']
     node
   end
 
@@ -58,10 +62,11 @@ describe CernerKafkaHelper do
       end
     end
 
-    context 'brokers is not provided, broker.id is not set and version is 0.9.0.0' do
+# I changed the kafka version to 1.0.2 again
+    context 'brokers is not provided, broker.id is not set and version is 1.0.2' do
       let(:other_node) do
         other_node = node
-        other_node.default['kafka']['version'] = '0.9.0.0'
+        other_node.default['kafka']['version'] = '1.0.2'
         other_node.default['kafka']['brokers'] = nil
         other_node
       end
