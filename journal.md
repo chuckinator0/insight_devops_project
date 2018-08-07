@@ -122,7 +122,22 @@ Recipe: kafka::_install
 
 So it looks like the step of actually installing kafka was skipped due to `not_if`, whatever that means. Looking into `_install.rb`, the `not_if` clause is `not_if { kafka_installed? }`, so I think this just means kafka is already installed. However, `grep -r "kafka" \usr` didn't return anything to indicate that kafka has been installed (assuming it would be installed there?), so ultimately this didn't work. In the code of `_install.rb`, it seems there is a path to the `.tgz` file you need to install kafka, but in my case, I'd need to be downloading that `tgz` from a download link from the kafka site. I found another kafka cookcook in [this github repo](https://github.com/cerner/cerner_kafka) whose documentation seems much clearer at first glance. I think the first repo was addressing a particular technical issue in a particular setup, whereas this repo seems to be aimed at someone like me trying to set things up for the first time. In the meantime, I think I might as well use terraform to set up an infrastructure that makes sense for my pipeline rather than keep messing with this test setup. Then I can look into this new kafka cookbook and hope to get things up and running.
 
-I have chef nodes bootstrapped in the new infrastructure: kafka-master, kafka-worker1, and kafka-worker2.
+I have chef nodes bootstrapped in the new infrastructure: kafka-master, kafka-worker1, and kafka-worker2. I got an error trying to upload this new cookbook:
+
+```
+ERROR: Cookbook cerner_kafka depends on cookbooks which are not currently
+ERROR: being uploaded and cannot be found on the server.
+ERROR: The missing cookbook(s) are: 'java' version '>= 0.0.0', 'ulimit' version '>= 0.0.0', 'logrotate' version '>= 0.0.0'
+```
+
+Using `grep`, I found where ulimit, java, and logrotate are mentioned in the repository. Ubuntu 16.04 appears to come with java dev kit 8, so I don't think I even need that java recipe. I'm going to try commenting out the "include recipe: java" part. I'll pass on ulimit and logrotate as well and see what happens. Ulimit seems to mean "user limit" and logrotate seems to be doing something on a daily time interval. After commenting out these references, I could successfully upload the cookbook to the chef-server. Running, however, gives the error
+
+```
+Unable to run kafka::default unable to determine broker ID
+/var/chef/cache/cookbooks/cerner_kafka/libraries/config_helper.rb:41:in `set_broker_id'
+```
+So the broker ID isn't being set correctly.
+
 
 # Terraform Help
 

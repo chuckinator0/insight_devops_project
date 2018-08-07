@@ -9,7 +9,8 @@ describe CernerKafkaHelper do
     # still supported on kafka's download page
     node.default['kafka']['version'] = '1.0.2'
     # Not sure if I should change the broker names or the zookeeper names
-    node.default['kafka']['brokers'] = ['broker1', 'broker2', 'broker3']
+    # Trying to set these brokers to the public dns
+    node.default['kafka']['brokers'] = ['ec2-35-155-165-200.us-west-2.compute.amazonaws.com', 'ec2-52-37-224-171.us-west-2.compute.amazonaws.com', 'ec2-54-71-117-215.us-west-2.compute.amazonaws.com']
     # replace with my public dns
     node.default['kafka']['zookeepers'] = ['ec2-35-155-165-200.us-west-2.compute.amazonaws.com:2181', 'ec2-52-37-224-171.us-west-2.compute.amazonaws.com:2181', 'ec2-54-71-117-215.us-west-2.compute.amazonaws.com:2181']
     node

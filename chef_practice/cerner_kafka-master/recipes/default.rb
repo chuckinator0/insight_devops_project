@@ -181,11 +181,12 @@ end
   end
 end
 
-logrotate_app 'kafka' do
-  node["kafka"]["logrotate"].each do |k, v|
-    send k, v
-  end
-end
+# Commenting out logrotate
+# logrotate_app 'kafka' do
+#   node["kafka"]["logrotate"].each do |k, v|
+#     send k, v
+#   end
+# end
 
 # Link kafka config to /etc/kafka
 link "/etc/kafka" do

@@ -11,9 +11,10 @@ supports 'redhat'
 supports 'ubuntu'
 supports 'debian'
 
-depends 'java'
-depends 'ulimit'
-depends 'logrotate'
+# Commenting these recipes out
+# depends 'java'
+# depends 'ulimit'
+# depends 'logrotate'
 
 version           '2.6.0'
 
