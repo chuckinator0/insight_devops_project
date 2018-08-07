@@ -163,7 +163,8 @@ I talked with Tao, who developed the pipeline I'm building on, and he gave me so
   + pyspark, cassandra-driver "and one kafka-spark connector "(sorry I forgot which one I used...)"
   + kafka 40 partitions and 2 replications
 
-  # Misc Questions
+# Misc Questions
 
-  + How can I use a bash script when ssh'ing through multiple machines?
-  + How do I automate "knife bootstrap" to multiple nodes simultaneously? A less manual way would be to craft a bash script that iterates through `knife bootstrap <IPs of kafka nodes> -N kafka-<number of kafka node> -x ubuntu --sudo` for each node
++ How can I use a bash script when ssh'ing through multiple machines?
++ How do I automate "knife bootstrap" to multiple nodes simultaneously? A less manual way would be to craft a bash script that iterates through `knife bootstrap <IPs of kafka nodes> -N kafka-<number of kafka node> -x ubuntu --sudo` for each node.
++ If I have time later, I need to make Terraform more modular and look more into the aws security group module to open specific ports on specific services.
