@@ -138,6 +138,8 @@ Unable to run kafka::default unable to determine broker ID
 ```
 So the broker ID isn't being set correctly. I now put in the public dns id's into `cerner_kafka-master/spec/config_helper_spec.rb` instead of `'broker1'` etc. Reuploading the cookbook, I'm still getting the same error. The error in assigning broker ID's seems to be happening with the `CernerKafkaHelper` function in `cerner_kafka-master/spec/config_helper_spec.rb`. I found several places where `zoo1:2184` and other "zoo<1,2,3>"" are referenced. It seems that these are actually supposed to be changed to the particular public dns of my instances. The documentation doesn't explain this clearly, and also requires a LOT of repetition in changing these.
 
+I found another [github repo](https://github.com/Webtrends/kafka) for a kafka cookbook. This one is even simpler than the previous one, so it might be the resource to get me over this hurdle. It requires a "java" cookbook and a "runit" cookbook. The runit cookbook seems to be an [official cookbook](https://github.com/chef-cookbooks/runit), and I will again ignore the java recipe since my instances already have java installed.
+
 
 # Terraform Help
 

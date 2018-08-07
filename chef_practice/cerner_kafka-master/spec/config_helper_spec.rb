@@ -4,7 +4,7 @@ describe CernerKafkaHelper do
   let(:node) do
     node = Chef::Node.new
     node.default['kafka']['server.properties'] = {}
-    node.default['hostname'] = 'broker1'
+    node.default['hostname'] = 'ec2-35-155-165-200.us-west-2.compute.amazonaws.com'
     # Changed to v1.0.2 since Tao's pipeline uses v1 and 1.0.2 is the version
     # still supported on kafka's download page
     node.default['kafka']['version'] = '1.0.2'
@@ -85,7 +85,8 @@ describe CernerKafkaHelper do
     context 'zookeepers is provided' do
       it 'sets server.properties zookeeper.connect' do
         CernerKafkaHelper.set_zookeeper_connect node
-        expect(node['kafka']['server.properties']['zookeeper.connect']).to eq('zoo1:2181,zoo2:2181,zoo3:2181')
+        # Change this to the dns of my kafka/zookeeper nodes
+        expect(node['kafka']['server.properties']['zookeeper.connect']).to eq('ec2-35-155-165-200.us-west-2.compute.amazonaws.com:2181,ec2-52-37-224-171.us-west-2.compute.amazonaws.com:2181,ec2-54-71-117-215.us-west-2.compute.amazonaws.com:2181')
       end
     end
 
@@ -98,7 +99,8 @@ describe CernerKafkaHelper do
 
       it 'sets server.properties zookeeper.connect' do
         CernerKafkaHelper.set_zookeeper_connect other_node
-        expect(other_node['kafka']['server.properties']['zookeeper.connect']).to eq('zoo1:2181,zoo2:2181,zoo3:2181/my_chroot')
+        # Changed to my kafka/zookeeper dns
+        expect(other_node['kafka']['server.properties']['zookeeper.connect']).to eq('ec2-35-155-165-200.us-west-2.compute.amazonaws.com:2181,ec2-52-37-224-171.us-west-2.compute.amazonaws.com:2181,ec2-54-71-117-215.us-west-2.compute.amazonaws.com:2181/my_chroot')
       end
     end
 
