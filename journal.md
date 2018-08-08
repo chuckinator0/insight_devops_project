@@ -105,6 +105,8 @@ It looks like `knife cookbook create <cookbook_name>` doesn't work anymore. We h
 
 instead. It also looks like the command needs to be done from `~/chef-repo/cookbooks` rather than `~/chef-repo` like it says in the guide.
 
+# Using Chef to configure Kafka
+
 I'm currently stuck at the point where I am running the command `sudo chef-client` from within the `kafka-test` node. It turns out that it takes a lot to configre a kafka cluster with chef. I found [this github repo](https://github.com/mthssdrbrg/kafka-cookbook?files=1) that has a pretty clear layout for the recipes, attributes, etc for configuring kafka. It also has an explanation for using custom logic to do a rolling restart of kafka servers so they don't all fail at the same time. This could definitely be helpful for my project.
 
 I'm going to try to use the `default.rb` attribute from the kafka cookbook I found. It seems to install and configure kafka v1.0.0 using scala 12.12 rather than 12.11. But I just want to see what happens when I try to use it to configure a kafka node.
@@ -140,6 +142,62 @@ So the broker ID isn't being set correctly. I now put in the public dns id's int
 
 I found another [github repo](https://github.com/Webtrends/kafka) for a kafka cookbook. This one is even simpler than the previous one, so it might be the resource to get me over this hurdle. It requires a "java" cookbook and a "runit" cookbook. The runit cookbook seems to be an [official Chef cookbook](https://github.com/chef-cookbooks/runit), as is the official Chef java cookbook [here](https://supermarket.chef.io/cookbooks/java).
 
+I had to hardcode kafka's download URL into this new kafka cookbook, and it seems kafka requires a checksum to validate downloads. I used the url `http://apache.cs.utah.edu/kafka/1.0.0/kafka_2.11-1.0.0.tgz` for downloading kafka 1.0.0, and running the command `md5 kafka_2.11-1.0.0.tar` to get the checksum for this file. I set the partitions to 40, but I don't know how to set replicators to 2.
+
+More errors uploading these cookbooks. For example:
+
+```
+ubuntu@ip-10-0-0-18:~/chef-repo/cookbooks$ knife cookbook upload -a
+ERROR: Chef::Exceptions::MetadataNotValid: Cookbook loaded at path(s) [/home/ubuntu/chef-repo/cookbooks/kafka] has invalid metadata: The `name' attribute is required in cookbook metadata
+```
+I added a line `name = "kafka"` to the top of the metadata.rb file akin to what is in the cerner_kafka cookbook that didn't have this problem. The java cookbook also apparently depends on other cookbooks: `The missing cookbook(s) are: 'windows' version '>= 0.0.0', 'homebrew' version '>= 0.0.0'` and the runit cookbook depends on: `'packagecloud' version '>= 0.0.0', 'yum-epel' version '>= 0.0.0'`. I'm getting the feeling like I'm just going to be hunting for cookbook dependencies ad nauseum at this point. According to the runit cookbook readme, those dependencies are only for rhel, which I think has to do with Red Hat linux. For the java cookbook, I definitely don't need windows. Checking the java cookbook, the homebrew cookbook it depends on doesn't in turn depend on any other cookbooks, so I could add it without further trouble. However, I shouldn't need homebrew here either. I grep'd "include_recipe 'windows'" which pointed me to the file `jce.rb`, where there is an `if` statement that says if the OS is windows, then include the windows recipe. This should be skipped, yet for some reason windows is listed as a required cookbook. I am now reading [chef docs about Berkshelf](https://docs.chef.io/berkshelf.html). Apparently berkshelf.lock files are used to automatically download cookbooks that are depended upon. What is frustrating is that these cookbooks don't appear to actually need these other cookbooks, which seems like bloated configuration to me. I suppose the easiest way to approach this would be to comment out the `depends` statements in the metadata.rb files in the different cookbooks. Java has a metadata.json file that is a LOT of text, though. Maybe I will comment out the dependency on the java cookbook altogether for now because my AMI's do have java installed already. Trying it out! It didn't work, so I double checked my assumption that I already have java installed. Turns out I don't. D'oh. So I do need to include this java cookbook and figure out this java dependency business.
+
+I'm going to try to use the command `knife cookbook site download java` and `knife cookbook site install java` to get this java cookbook (found these commands in the chef supermarket website). YAY! It installs all the cookbook dependencies too! I can use this in the future with other cookbooks from the chef marketplace. For now, I'm going to just try to install java on the kafka-master node using this java cookbook. I got an error from line 52 of `cookbooks/java/recipes/openjdk`:
+
+```
+Error executing action `install` on resource 'apt_package[openjdk-6-jdk, openjdk-6-jre-headless]'
+No candidate version available for openjdk-6-jdk, openjdk-6-jre-headless
+```
+
+I'm going to go into the attributes/default.rb to change the default to java 8 since the readme for the cookbook indicated that java 6 and 7 cannot be automatically installed at this time. YAY! I was able to install java on the kafka-master node!
+
+I'm going to clear out these cookbooks that haven't worked out and try the method of using knife to install the zookeeper and kafka-cluster cookbooks and their dependencies in one go like I did with java. [Here is the official zookeeper-cluster cookbook](https://supermarket.chef.io/cookbooks/zookeeper-cluster#knife) and [here is the official kafka-cluster cookbook.](https://supermarket.chef.io/cookbooks/kafka-cluster#readme) I'm reading about [wrapper cookbooks](https://blog.chef.io/2017/02/14/writing-wrapper-cookbooks/), which are cookbooks that are used to modify off-the-shelf cookbooks from the chef supermarket. Basically, you add `depends` statements in the metadata.rb and `include recipe` statements in recipes/default.rb. You can then overwrite the attributes from the cookbook you're wrapping by putting your own attributes in atributes/defualt.rb of the wrapper cookbook. The zookeeper-cluster cookbook recommends using a wrapper cookbook to configure your particular zookeeper setup (e.g. the hostnames of your nodes). These would be stored in a "data bag", which you can create with knife using `knife data bag create <name of bag> <name of item>`. This creates a json file. I did `knife data bag create zoo_bag zookeeper` and made the json for my kafka node host names:
+
+```
+{
+  "id": "zookeeper",
+  "development": [
+    "p-10-0-0-5.us-west-2.compute.internal",
+    "ip-10-0-0-14.us-west-2.compute.internal",
+    "ip-10-0-0-25.us-west-2.compute.internal"
+  ] 
+} 
+```
+It seems like this data bag exists on the chef server, not on the chef workstation, so it's confusing that there is an empty directory /chef-repo/data_bags.
+
+I'm now following the wrapper cookbook guide to make a wrapper for the zookeeper cookbook. This means creating a recipes/default.rb file with:
+
+```
+bag = data_bag_item('zoo_bag', 'zookeeper')[node.chef_environment]
+node.default['zookeeper-cluster']['zoo_bag']['development'] = node['ip-10-0-0-5.us-west-2.compute.internal','ip-10-0-0-14.us-west-2.compute.internal','ip-10-0-0-25.us-west-2.compute.internal']
+node.default['zookeeper-cluster']['zoo_bag']['ensemble'] = bag
+include_recipe zookeeper-cluser::default
+```
+
+and adding `depends zookeeper-cluster` in metadata.rb. I'm not 100% sure right now if I put in those hostnames correctly since the example was just `node['fqdn']` where fdnq is supposed to match the hostnames exactly. The kafka-cluster cookbook suggests that all I need to do at this point is add the following to my wrapper cookbook recipes/default.rb :
+
+```
+node.default['kafka-cluster']['config']['properties']['broker.id'] = node['ipaddress'].rpartition('.').last
+node.default['kafka-cluster']['config']['properties']['zookeeper.connect'] = bag['ensemble'].map { |m| "#{m}:2181"}.join(',').concat('/kafka')
+include_recipe 'kafka-cluster::default'
+```
+
+I'm not 100% sure right now if 'ipaddress' is computed by the kafka-cluster cookbook from the zookeeper-cluster cookbook or if I have to put that ip in by hand. The reason I'm confused about it is that `rpartition('.').last` seems to be taking the last place value of the ip adress and using it as a broker id, which indicates that 'ipaddress' should be a single ip address, not an array of all the addresses in the cluster.
+
+Odd aside trying to knife install the kafka-cluster cookbook--It depends on a deprecated libartifact cookbook whose tar file I had to rename to libartifact.tar.gz instead of libartifact-1.3.5.tar.gz in order to install. Dependencies in chef supermarket cookbooks seem to be a structural pain in how these things work. I'd love to learn how to update cookbooks to use alternatives to deprecated dependencies. Anyway, I was able to install the kafka-cluster cookbook.
+
+Back to my confusion about how to set up this wrapper cookbook for zookeeper-cluster and kafka-cluster.
+
 
 # Terraform Help
 
@@ -163,8 +221,9 @@ I talked with Tao, who developed the pipeline I'm building on, and he gave me so
   + pyspark, cassandra-driver "and one kafka-spark connector "(sorry I forgot which one I used...)"
   + kafka 40 partitions and 2 replications
 
-# Misc Questions
+# Misc Questions and thoughts
 
 + How can I use a bash script when ssh'ing through multiple machines?
 + How do I automate "knife bootstrap" to multiple nodes simultaneously? A less manual way would be to craft a bash script that iterates through `knife bootstrap <IPs of kafka nodes> -N kafka-<number of kafka node> -x ubuntu --sudo` for each node.
 + If I have time later, I need to make Terraform more modular and look more into the aws security group module to open specific ports on specific services.
++ If I have time later, I can automate the chef server and chef workstation setup in Terraform
