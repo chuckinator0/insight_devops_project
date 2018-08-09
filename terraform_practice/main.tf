@@ -220,6 +220,7 @@ resource "aws_instance" "chef-workstation" {
   key_name = "${var.keypair_name}"
   count = 1
   user_data = "${data.template_file.chef_workstation_template.rendered}"
+  depends_on = ["aws_instance.chef-test"]
 
   vpc_security_group_ids      = ["${module.vpc.default_security_group_id}", "${module.open-ssh-sg.this_security_group_id}"]
   subnet_id                   = "${module.vpc.public_subnets[0]}"
