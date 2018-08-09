@@ -167,7 +167,7 @@ I'm going to clear out these cookbooks that haven't worked out and try the metho
 {
   "id": "zookeeper",
   "development": [
-    "p-10-0-0-5.us-west-2.compute.internal",
+    "ip-10-0-0-5.us-west-2.compute.internal",
     "ip-10-0-0-14.us-west-2.compute.internal",
     "ip-10-0-0-25.us-west-2.compute.internal"
   ] 
@@ -196,8 +196,60 @@ I'm not 100% sure right now if 'ipaddress' is computed by the kafka-cluster cook
 
 Odd aside trying to knife install the kafka-cluster cookbook--It depends on a deprecated libartifact cookbook whose tar file I had to rename to libartifact.tar.gz instead of libartifact-1.3.5.tar.gz in order to install. Dependencies in chef supermarket cookbooks seem to be a structural pain in how these things work. I'd love to learn how to update cookbooks to use alternatives to deprecated dependencies. Anyway, I was able to install the kafka-cluster cookbook.
 
-Back to my confusion about how to set up this wrapper cookbook for zookeeper-cluster and kafka-cluster.
+Back to my confusion about how to set up this wrapper cookbook for zookeeper-cluster and kafka-cluster. I actually think I might be wrong about recipes/default.rb. I think it should be:
 
+```
+bag = data_bag_item('zoo_bag', 'zookeeper')[node.chef_environment]
+node.default['zookeeper-cluster']['config']['instance_name'] = node['ip-10-0-0-5.us-west-2.compute.internal','ip-10-0-0-14.us-west-2.compute.internal','ip-10-0-0-25.us-west-2.compute.internal']
+node.default['zookeeper-cluster']['config']['ensemble'] = bag
+include_recipe zookeeper-cluser::default
+```
+The 'config' and 'instance_name' are computed within the zookeeper-cluster default recipe. I thought those corresponded to the data bag, but the data bag is dealt with in the first line. I'm still not sure whether the instance name should be a list. I'm going to try using lists in those lines like so:
+
+```
+node.default['zookeeper-cluster']['config']['instance_name'] = node['ip-10-0-0-5.us-west-2.compute.internal','ip-10-0-0-14.us-west-2.compute.internal','ip-10-0-0-25.us-west-2.compute.internal']
+...
+node.default['kafka-cluster']['config']['properties']['broker.id'] = node['10.0.0.5','10.0.0.14','10.0.0.25'].rpartition('.').last
+```
+It doesn't make a whole lot of sense because of how `.rpartition()` works, and there doesn't seem to be code in the zookeeper-cluster cookbook to tell a node what IP address it has. It just doesn't make sense. Another option would be to repeat each of these lines for each of the IP addresses, but that also doesn't really make sense to me. It can't be hardcoded because each node is pulling the cookbook, but it can't be iterative.
+
+Ok, Bastian pointed me towards [this doc]() about Ohai, which is a set of functions that grab system info from the current node. that means the correct syntax for this wrapper recipe would be:
+
+```
+bag = data_bag_item('zoo_bag', 'zookeeper')[node.chef_environment]
+node.default['zookeeper-cluster']['config']['instance_name'] = node['hostname']
+node.default['zookeeper-cluster']['config']['ensemble'] = bag
+include_recipe 'zookeeper-cluser::default'
+
+node.default['kafka-cluster']['config']['properties']['broker.id'] = node['ipaddress'].rpartition('.').last
+node.default['kafka-cluster']['config']['properties']['zookeeper.connect'] = bag['ensemble'].map { |m| "#{m}:2181"}.join(',').concat('/kafka')
+include_recipe 'kafka-cluster::default'
+```
+
+The `node['hostname']` is a built in function to retrieve the hostname of the current node (which matches the hostnames I defined in the data bag item). The `node['ipaddress']` is likewise a built in function to grab the ip address of the current node. I had thought these were placeholders, but they are actually built-in tools.
+
+Alright, now I'm having this trouble with `knife cookbook site install kafka-cluster`. It says it depends on a deprecated cookbook called libartifact and there's an error. I was able to force an install of libartifact, but I still can't install kafka-cluster cookbook. When I try to download and install libartifact directly, I have to change the tar file name from `libartifact-1.3.5.tar.gz` to `libartifact.tar.gz` first. But then when I try to install the kafka-cluster cookbook, it removes the libartifact cookbook and gives the same error:
+
+```
+WARNING: DEPRECATION: This cookbook has been deprecated. It has been replaced by poise-archive.
+WARNING: Use --force to force download deprecated cookbook.
+Removing pre-existing version.
+Uncompressing libartifact version 1.3.5.
+ERROR: Archive::Error: Failed to open '/home/ubuntu/chef-repo/cookbooks/libartifact.tar.gz'
+```
+
+I think maybe there's some basic bug about what the expected name of the .tar file should be? Ok, so I'm going to use the `tar -xzf kafka-cluster-1.3.3.tar.gz` to unzip kafka, go into the metadata and change the dependency on libartifact to poise-archive 1.5.0 instead. Then, I need to create a Berksfile inside the kafka-cluster cookbook:
+
+```
+source 'https://supermarket.chef.io'
+metadata
+```
+
+The command `berks install` should then install all the dependencies. I have to do this because the `knife cookbook site install` would install from the supermarket, whereas `berks isntall` will install based on my local kafka-cluster cookbook which now doesn't depend on libartifact. We can also do `berks upload` to upload these cookbooks to the chef server. Let's see if this works...
+
+Ok, it worked for kafka-cluster, but I need to do the same with zookeeper-cluster. Alright, was able to knife upload all cookbooks, although I got a warning that homebrew is "frozen" so it won't be uploaded. Don't care about homebrew.
+
+Ok, now to edit my kafka nodes to run my wrapper cookbook `insight-kafka-cluster`, which depends on the zookeeper-cluster and kafka-cluster cookbooks using `knife edit node <node name>` (oops, I needed to get back to the chef-repo/ directory to run that command).
 
 # Terraform Help
 
