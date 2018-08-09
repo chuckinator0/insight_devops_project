@@ -186,12 +186,18 @@ resource "aws_instance" "cassandra" {
   }
 }
 
+# Initial configuration bash script for chef server
+data "template_file" "chef_server_template" {
+  template = "${file("chef_server_template.tpl")}"
+}
+
 # Provision chef server
 resource "aws_instance" "chef-test" {
   ami = "${lookup(var.amis, var.aws_region)}"
   instance_type = "t2.medium"
   key_name = "${var.keypair_name}"
   count = 1
+  user_data = "${data.template_file.chef_server_template.rendered}"
 
   vpc_security_group_ids      = ["${module.vpc.default_security_group_id}", "${module.open-ssh-sg.this_security_group_id}"]
   subnet_id                   = "${module.vpc.public_subnets[0]}"
@@ -202,12 +208,18 @@ resource "aws_instance" "chef-test" {
   }
 }
 
+# Initial configuration bash script for chef server
+data "template_file" "chef_workstation_template" {
+  template = "${file("chef_workstation_template.tpl")}"
+}
+
 # Provision chef workstation
 resource "aws_instance" "chef-workstation" {
   ami = "${lookup(var.amis, var.aws_region)}"
   instance_type = "t2.micro"
   key_name = "${var.keypair_name}"
   count = 1
+  user_data = "${data.template_file.chef_workstation_template.rendered}"
 
   vpc_security_group_ids      = ["${module.vpc.default_security_group_id}", "${module.open-ssh-sg.this_security_group_id}"]
   subnet_id                   = "${module.vpc.public_subnets[0]}"

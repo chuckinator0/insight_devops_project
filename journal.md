@@ -18,7 +18,7 @@ Then use the command
 
 ```AWS_ACCESS_KEY_ID=xxxx AWS_SECRET_ACCESS_KEY=xxxx aws s3 cp <file> s3://my-bucket/```
 
-The ec2 instance doesn't have access to my local environment variables (I don't think...I would like clarification on how to pass these to the remote instance), so I had to put those in. The key commands here were:
+The ec2 instance doesn't have access to my local environment variables (I don't think...I would like clarification on how to pass these to the remote instance), so I had to put those in. The important commands here were:
 
 ```aws s3 cp <file> <bucket>```
 
@@ -28,6 +28,8 @@ I am following [this guide](https://www.digitalocean.com/community/tutorials/how
 
 I wrote a bash script to configure the chef server:
 ```
+#!/bin/bash
+
 # Download chef 12 for ubuntu 16.04
 wget https://packages.chef.io/files/stable/chef-server/12.17.33/ubuntu/16.04/chef-server-core_12.17.33-1_amd64.deb
 # Install
@@ -39,8 +41,10 @@ chef-server-ctl user-create admin admin admin charleslarrieu@mfala.org examplepa
 # Create an organization and make a validator key
 sudo chef-server-ctl org-create insight "Chuck Insight Project" --association_user admin -f insight-validator.pem
 ```
-i wrote a bash script to configure chef workstation (after ssh'ing into the workstation):
+I wrote a bash script to configure chef workstation (after ssh'ing into the workstation):
 ```
+#!/bin/bash
+
 # Install git, clone chef-repo, and start version control
 sudo apt-get update
 sudo apt-get install git
@@ -249,7 +253,9 @@ The command `berks install` should then install all the dependencies. I have to 
 
 Ok, it worked for kafka-cluster, but I need to do the same with zookeeper-cluster. Alright, was able to knife upload all cookbooks, although I got a warning that homebrew is "frozen" so it won't be uploaded. Don't care about homebrew.
 
-Ok, now to edit my kafka nodes to run my wrapper cookbook `insight-kafka-cluster`, which depends on the zookeeper-cluster and kafka-cluster cookbooks using `knife edit node <node name>` (oops, I needed to get back to the chef-repo/ directory to run that command).
+Ok, now to edit my kafka nodes to run my wrapper cookbook `insight-kafka-cluster`, which depends on the zookeeper-cluster and kafka-cluster cookbooks using `knife edit node <node name>` (oops, I needed to get back to the chef-repo/ directory to run that command). I edited each of the nodes. Again, I'm not sure how I would automate this part. I think these node profiles exist on the chef server, so perhaps to automate I could send a command to the chef server directly that overwrites these files with the proper contents? There are details there to figure out. 
+
+
 
 # Terraform Help
 
