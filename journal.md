@@ -93,7 +93,7 @@ knife client list
   + organization short name: insight
   + organization long name: "Chuck Insight Project"
 
-  There was a slight wrinkle during the workstation setup. when using the command `knife.rb` file and using the `knife client list` command, I had to specify the chef server IP address `ip-10-0-0-20.us-west-2.compute.internal` rather than just `10.0.0.20`.
+There was a slight wrinkle during the workstation setup. when using the command `knife.rb` file and using the `knife client list` command, I had to specify the chef server IP address `ip-10-0-0-20.us-west-2.compute.internal` rather than just `10.0.0.20`.
 
 To bootstrap the kafka-test machine as a chef client, I had to make sure I was in the /chef-repo and use the command
 
@@ -165,7 +165,7 @@ No candidate version available for openjdk-6-jdk, openjdk-6-jre-headless
 
 I'm going to go into the attributes/default.rb to change the default to java 8 since the readme for the cookbook indicated that java 6 and 7 cannot be automatically installed at this time. YAY! I was able to install java on the kafka-master node!
 
-I'm going to clear out these cookbooks that haven't worked out and try the method of using knife to install the zookeeper and kafka-cluster cookbooks and their dependencies in one go like I did with java. [Here is the official zookeeper-cluster cookbook](https://supermarket.chef.io/cookbooks/zookeeper-cluster#knife) and [here is the official kafka-cluster cookbook.](https://supermarket.chef.io/cookbooks/kafka-cluster#readme) I'm reading about [wrapper cookbooks](https://blog.chef.io/2017/02/14/writing-wrapper-cookbooks/), which are cookbooks that are used to modify off-the-shelf cookbooks from the chef supermarket. Basically, you add `depends` statements in the metadata.rb and `include recipe` statements in recipes/default.rb. You can then overwrite the attributes from the cookbook you're wrapping by putting your own attributes in atributes/defualt.rb of the wrapper cookbook. The zookeeper-cluster cookbook recommends using a wrapper cookbook to configure your particular zookeeper setup (e.g. the hostnames of your nodes). These would be stored in a "data bag", which you can create with knife using `knife data bag create <name of bag> <name of item>`. This creates a json file. I did `knife data bag create zoo_bag zookeeper` and made the json for my kafka node host names:
+I'm going to clear out these cookbooks that haven't worked out and try the method of using knife to install the zookeeper and kafka-cluster cookbooks and their dependencies in one go like I did with java. [Here is the official zookeeper-cluster cookbook](https://supermarket.chef.io/cookbooks/zookeeper-cluster#knife) and [here is the official kafka-cluster cookbook.](https://supermarket.chef.io/cookbooks/kafka-cluster#readme) I'm reading about [wrapper cookbooks](https://blog.chef.io/2017/02/14/writing-wrapper-cookbooks/), which are cookbooks that are used to modify off-the-shelf cookbooks from the chef supermarket. Basically, you add `depends` statements in the metadata.rb and `include recipe` statements in recipes/default.rb. You can then overwrite the attributes from the cookbook you're wrapping by putting your own attributes in atributes/defualt.rb of the wrapper cookbook. I will make sure to do this later to get the right version of kafka that Tao used in his pipeline. The zookeeper-cluster cookbook recommends using a wrapper cookbook to configure your particular zookeeper setup (e.g. the hostnames of your nodes). These would be stored in a "data bag", which you can create with knife using `knife data bag create <name of bag> <name of item>`. This creates a json file. I did `knife data bag create zoo_bag zookeeper` and made the json for my kafka node host names:
 
 ```
 {
@@ -217,7 +217,7 @@ node.default['kafka-cluster']['config']['properties']['broker.id'] = node['10.0.
 ```
 It doesn't make a whole lot of sense because of how `.rpartition()` works, and there doesn't seem to be code in the zookeeper-cluster cookbook to tell a node what IP address it has. It just doesn't make sense. Another option would be to repeat each of these lines for each of the IP addresses, but that also doesn't really make sense to me. It can't be hardcoded because each node is pulling the cookbook, but it can't be iterative.
 
-Ok, Bastian pointed me towards [this doc]() about Ohai, which is a set of functions that grab system info from the current node. that means the correct syntax for this wrapper recipe would be:
+Ok, Bastian pointed me towards [this doc](https://docs.chef.io/ohai.html) about Ohai, which is a set of functions that grab system info from the current node. that means the correct syntax for this wrapper recipe would be:
 
 ```
 bag = data_bag_item('zoo_bag', 'zookeeper')[node.chef_environment]
@@ -253,7 +253,90 @@ The command `berks install` should then install all the dependencies. I have to 
 
 Ok, it worked for kafka-cluster, but I need to do the same with zookeeper-cluster. Alright, was able to knife upload all cookbooks, although I got a warning that homebrew is "frozen" so it won't be uploaded. Don't care about homebrew.
 
-Ok, now to edit my kafka nodes to run my wrapper cookbook `insight-kafka-cluster`, which depends on the zookeeper-cluster and kafka-cluster cookbooks using `knife edit node <node name>` (oops, I needed to get back to the chef-repo/ directory to run that command). I edited each of the nodes. Again, I'm not sure how I would automate this part. I think these node profiles exist on the chef server, so perhaps to automate I could send a command to the chef server directly that overwrites these files with the proper contents? There are details there to figure out. 
+Ok, now to edit my kafka nodes to run my wrapper cookbook `insight-kafka-cluster`, which depends on the zookeeper-cluster and kafka-cluster cookbooks using `knife edit node <node name>` (oops, I needed to get back to the chef-repo/ directory to run that command). I edited each of the nodes. Again, I'm not sure how I would automate this part. I think these node profiles exist on the chef server, so perhaps to automate I could send a command to the chef server directly that overwrites these files with the proper contents? There are details there to figure out. Nodes are edited. All that is required is to run `sudo chef-client`.
+
+Well, after fixing a typo, I'm getting this error when running sudo chef-client:
+
+```undefined method `[]' for nil:NilClass```
+
+It traces back to this line from insight-kafka-cluster/recipes/default.rb :
+
+```
+node.default['kafka-cluster']['config']['properties']['zookeeper.connect'] = bag['ensemble'].map { |m| "#{m}:2181"}.join(',').concat('/kafka')
+```
+
+So, one of these [''] pieces is returning nil. The line above it has most of the same parameters except ['zookeeper.connect'] and bag['ensemble'], so one of these is wrong. I cannot find ['zookeeper.connect'] in the attributes  folder of the kafka-cluster cookbook (or anywhere but the README), so that is probably the thing that's collapsing to nil. It is just weird because this seems like a clear oversight that someone would have mentioned. Ok, I'll try setting a defualt attribute for zookeeper.connect in my wrapper cookbook called insight-kafka-cluster. My understanding is that I just need to add the line
+
+```
+node.default['kafka-cluster']['config']['properties']['zookeeper.connect'] = "{dummy:string}"
+```
+
+to attributes/default.rb to initialize the variable, and then the recipe will override this default. The reason why I think this is because `default['kafka-cluster']['config']['properties']['broker.id'] = 1` is in kafka-cluster/attributes/default.rb, and 1 is just a dummy integer that will get overridden with the last place value of the ip address in the recipe.
+
+Ok, that didn't work. I'm still getting the same [] nil error. That might indicate that something is wrong with the `bag['ensemble']` part. Wait...now I'm noticing when I search the kafka-cluster github for "zookeeper.connect" [here](https://github.com/bloomberg/kafka-cookbook/search?q=zookeeper.connect&unscoped_q=zookeeper.connect), there is a test environment with the line:
+
+```
+node.default['kafka-cluster']['config']['zookeeper_connect'] = 'localhost:2181/kafka'
+```
+
+Notice here that the syntax is ['zookeeper_connect'], not ['zookeeper.connect']. I will make this edit to the recipe in insight-kafka-cluster and see what happens. Darn, same nil [] error as before. Kevin helped me think of the following idea: The `.map` function might be expecting IP addresses rather than hostnames, but my data bag is given in terms of hostnames. I'm going to try using ip addresses in the data bag and update node['hostname'] to node['ipaddress'].
+
+Ohhhh oof. Dumb. I think the issue might be a few lines above the trouble line with bag['ensemble']:
+
+```
+node.default['zookeeper-cluster']['config']['ensemble'] = bag
+```
+
+Notice that the right side just says bag, not bag['ensemble']? I think that's my huckleberry. It needs to be
+
+```
+node.default['zookeeper-cluster']['config']['ensemble'] = bag['ensemble']
+```
+
+The call to bag['ensemble'] results in a nil []. This means I need to go back and change the data bag back to the hostnames like before and fix this bag['ensemble'] line.
+
+Ok, that didn't work. Now there's an error on that line I just edited. Now I'm wondering whether this all has to do with `bag = data_bag_item('zoo_bag', 'zookeeper')[node.chef_environment]`. In data_bag_item('zoo_bag','zookeeper'), there is a single environment called "develoment", and I'm wondering now whether that environment is not being used and the resulting list of hostnames is reading as empty. I'm reading about chef environments and I dont think I defined any environments along the way, so there should just be the `_default` environment. I understand in real life there would be dev, prod, and other environments, but for now, I'm just going to change the zoo_bag item to use the `_default` enviroment.
+
+AHA! Different error this time:
+
+```
+no implicit conversion of String into Integer
+>> node.default['zookeeper-cluster']['config']['ensemble'] = bag['ensemble']
+```
+
+I think this means my data bag is being read, but there is this type error where it's expecting an integer but getting a string. I'll change back to ip addresses in the data bag item? Nope. Maybe the ip addresses shouldn't be strings? Nope, it wouldnt even let me save the zoo_bag item in that condition.
+
+Siobahn helped me big time. He helped me reason that the object `bag` is an array of strings (my cluster's ip addresses), and so `bag['ensemble']` doesn't actually make sense. You can't find the item in the list at the index "ensemble". The corrected code is:
+
+```
+bag = data_bag_item('config', 'zookeeper-cluster')[node.chef_environment]
+node.default['zookeeper-cluster']['config']['instance_name'] = node['ipaddress']
+node.default['zookeeper-cluster']['config']['ensemble'] = bag
+include_recipe 'zookeeper-cluster::default'
+
+node.default['kafka-cluster']['config']['properties']['broker.id'] = node['ipaddress'].rpartition('.').last
+node.default['kafka-cluster']['config']['properties']['zookeeper.connect'] = bag.map { |m| "#{m}:2181"}.join(',').concat('/kafka')
+include_recipe 'kafka-cluster::default'
+```
+
+Uploading this the chef-server and running it in a node results in a different error, which is good because this new error is completely unrelated:
+
+```
+Chef::Exceptions::RecipeNotFound
+  --------------------------------
+could not find recipe apply for cookbook sysctl
+```
+
+I know how to solve cookbook dependency issues using the Berksfile! The good news is that I got the code coordinating zookeeper and kafka to work. I had to use  `berks install` inside chef-repo/cookbooks/insight-kafka-cluster. Now I'm getting a slightly different error, which is progress:
+
+```
+  Chef::Exceptions::RecipeNotFound
+  --------------------------------
+  could not find recipe apply for cookbook sysctl
+```
+
+
+
 
 
 
@@ -266,6 +349,8 @@ Ok, now to edit my kafka nodes to run my wrapper cookbook `insight-kafka-cluster
 + [A nice blogpost series to get started](https://blog.gruntwork.io/a-comprehensive-guide-to-terraform-b3d32832baca)
 
 I plan to look more into the modules to make sure that each service has sensible security groups.
+
+I just added the bash scripts for setting up the chef server and workstation. I set the workstation to depend on the initialization of the chef server. This should automatically set up the chef server and workstation as opposed to when I did everything manually in the first setup.
 
 # Pipeline Details
 
@@ -282,6 +367,6 @@ I talked with Tao, who developed the pipeline I'm building on, and he gave me so
 # Misc Questions and thoughts
 
 + How can I use a bash script when ssh'ing through multiple machines?
-+ How do I automate "knife bootstrap" to multiple nodes simultaneously? A less manual way would be to craft a bash script that iterates through `knife bootstrap <IPs of kafka nodes> -N kafka-<number of kafka node> -x ubuntu --sudo` for each node.
++ How do I automate "knife bootstrap" to multiple nodes simultaneously? A less manual way would be to craft a bash script that iterates through `knife bootstrap <IPs of kafka nodes> -N kafka-<number of kafka node> -x ubuntu --sudo` for each node. Perhaps I can have them each ssh this command to the chef workstation with terraform's user_data function, so when each comes online, it sends its own IP in the knife command.
 + If I have time later, I need to make Terraform more modular and look more into the aws security group module to open specific ports on specific services.
-+ If I have time later, I can automate the chef server and chef workstation setup in Terraform
++ ~~If I have time later, I can automate the chef server and chef workstation setup in Terraform~~ Done!
