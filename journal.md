@@ -306,7 +306,7 @@ no implicit conversion of String into Integer
 
 I think this means my data bag is being read, but there is this type error where it's expecting an integer but getting a string. I'll change back to ip addresses in the data bag item? Nope. Maybe the ip addresses shouldn't be strings? Nope, it wouldnt even let me save the zoo_bag item in that condition.
 
-Siobahn helped me big time. He helped me reason that the object `bag` is an array of strings (my cluster's ip addresses), and so `bag['ensemble']` doesn't actually make sense. You can't find the item in the list at the index "ensemble". The corrected code is:
+Siobahn helped me big time. He helped me reason that the object `bag` is an array of strings (my cluster's ip addresses), and so `bag['ensemble']` doesn't actually make sense. You can't find the item in the list at the index "ensemble". This codebase has proven to be REALLY difficult to work with, but I'm glad I've been able to stick with it and fix these issues. The corrected code is:
 
 ```
 bag = data_bag_item('config', 'zookeeper-cluster')[node.chef_environment]
@@ -327,15 +327,43 @@ Chef::Exceptions::RecipeNotFound
 could not find recipe apply for cookbook sysctl
 ```
 
-I know how to solve cookbook dependency issues using the Berksfile! The good news is that I got the code coordinating zookeeper and kafka to work. I had to use  `berks install` inside chef-repo/cookbooks/insight-kafka-cluster. Now I'm getting a slightly different error, which is progress:
+I know how to solve cookbook dependency issues using the Berksfile! The good news is that I got the code coordinating zookeeper and kafka to work. I had to use  `berks install` inside chef-repo/cookbooks/insight-kafka-cluster. Same error...seems to do with the line `include_recipe 'sysctl::apply'` in the cookbooks/kafka-cluster. According to [this github issue](https://github.com/bloomberg/chef-bach/pull/1118), I can comment out or delete the line `include_recipe 'sysctl::apply'` since the `depends` statement in the metadata is sufficient. Alright, running `sudo chef-client` on my kafka-master node was able to do some things! There were a couple of novel errors, though.
 
 ```
-  Chef::Exceptions::RecipeNotFound
-  --------------------------------
-  could not find recipe apply for cookbook sysctl
+    NoMethodError
+    -------------
+    undefined method `libartifact_file' for #<ZookeeperClusterCookbook::Provider::ZookeeperService:0x00000000053fd2c0>
 ```
 
+Well, earlier I had the issue with the libartifact cookbook. It was labeled as deprecated, refused to install, and it was suggested to use the pose-archive cookbook instead. So, I added that library back in and used `berks install` and also `knife cookbook upload -a --force` to get it added to the zookeeper-cluster cook and uploaded to the chef server. Ok, now that's working, but we have a different issue:
 
+```
+        Error executing action `create_if_missing` on resource 'remote_file[http://mirror.cc.columbia.edu/pub/software/apache/zookeeper/zookeeper-3.5.0-alpha/zookeeper-3.5.0-alpha.tar.gz]'
+        ================================================================================
+        
+        Net::HTTPServerException
+        ------------------------
+        404 "Not Found"
+```
+
+Alright, no big deal. The download mirror from columbia.edu is showing a 404 not found, so that's just a bad link. Very odd that the version is 3.5.0 since 3.5+ versions appear to still be in beta. Version 3.4.13 seems to be the latest stable release. I will go ahead and make an attributes directory and a default.rb there in my wrapper cookbook and set the following defaults:
+
+```
+default['zookeeper-cluster']['service']['version'] = '3.4.13'
+default['zookeeper-cluster']['service']['binary_checksum'] = 'c380eb03049998280895078d570cb944'
+```
+
+I got the md5 checksum from [here](https://apache.org/dist/zookeeper/zookeeper-3.4.13/zookeeper-3.4.13.tar.gz.md5). Setting these in the default attributes of my wrapper cookbook should override what's in the zookeeper-cluster cookbook. That's kind of the beauty of wrapper cookbooks. I don't have to dig into the underlying cookbooks. I just have to adjust what I need to adjust.
+
+Ok cool, I just got a checksum mismatch, which means the url was good but maybe it's not using md5 checksum to verify the download. I'll use the sha1 checksum `a989b527f3f990d471e6d47ee410e57d8be7620b` from [here](https://apache.org/dist/zookeeper/zookeeper-3.4.13/zookeeper-3.4.13.tar.gz.sha1). Hmm, checksum still didn't work. Well, downloading the file from apache and from this mirror on my laptop and running `shasum` on each of them, I do get the same checksum `a69f459f36da3760a2bbcc52e7bb29b08c5ce350` for both of them, so I'm going to go with this value next. I'm not sure this will work since the error says 
+
+```
+        Chef::Exceptions::ChecksumMismatch
+        ----------------------------------
+        Checksum on resource (a989b5) does not match checksum on content (7ced79)
+```
+
+This indicates the checksum on the content starts with 7ced79. But, I have to try the checksum calculated directly from apache. Yeah, as expected, it didn't work. This is confusing because I literally downloaded the file from apache and from the mirror and calculated their sha1 checksums and they matched. Is the download actually getting fooled by an attacker? Highly doubtful. Also, why does the calculated checksum on the apache download https://apache.org/dist/zookeeper/zookeeper-3.4.13/zookeeper-3.4.13.tar.gz not match the checksum they have posted https://apache.org/dist/zookeeper/zookeeper-3.4.13/zookeeper-3.4.13.tar.gz.sha1 ? These are some shenanigans.
 
 
 
