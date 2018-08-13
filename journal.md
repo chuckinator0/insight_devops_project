@@ -423,8 +423,10 @@ The reason I assumed it didn't work like this is that the kafka-cluster github d
 
 WOOHOO! successfully ran `sudo chef-client` to install zookeeper and kafka on all my nodes!! I requested a high-5 from Long and he obliged!
 
+The next step is to get spark streaming and cassandra configured using chef.
 
 
+# Using Chef to configure Spark-Streaming
 
 
 # Terraform Help
