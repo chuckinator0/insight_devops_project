@@ -167,7 +167,7 @@ I'm going to go into the attributes/default.rb to change the default to java 8 s
 
 I'm going to clear out these cookbooks that haven't worked out and try the method of using knife to install the zookeeper and kafka-cluster cookbooks and their dependencies in one go like I did with java. [Here is the official zookeeper-cluster cookbook](https://supermarket.chef.io/cookbooks/zookeeper-cluster#knife) and [here is the official kafka-cluster cookbook.](https://supermarket.chef.io/cookbooks/kafka-cluster#readme) I'm reading about [wrapper cookbooks](https://blog.chef.io/2017/02/14/writing-wrapper-cookbooks/), which are cookbooks that are used to modify off-the-shelf cookbooks from the chef supermarket. Basically, you add `depends` statements in the metadata.rb and `include recipe` statements in recipes/default.rb. You can then overwrite the attributes from the cookbook you're wrapping by putting your own attributes in atributes/defualt.rb of the wrapper cookbook. I will make sure to do this later to get the right version of kafka that Tao used in his pipeline. The zookeeper-cluster cookbook recommends using a wrapper cookbook to configure your particular zookeeper setup (e.g. the hostnames of your nodes). These would be stored in a "data bag", which you can create with knife using `knife data bag create <name of bag> <name of item>`. This creates a json file. I did `knife data bag create zoo_bag zookeeper` and made the json for my kafka node host names:
 
-```
+```json
 {
   "id": "zookeeper",
   "development": [
@@ -181,7 +181,7 @@ It seems like this data bag exists on the chef server, not on the chef workstati
 
 I'm now following the wrapper cookbook guide to make a wrapper for the zookeeper cookbook. This means creating a recipes/default.rb file with:
 
-```
+```ruby
 bag = data_bag_item('zoo_bag', 'zookeeper')[node.chef_environment]
 node.default['zookeeper-cluster']['zoo_bag']['development'] = node['ip-10-0-0-5.us-west-2.compute.internal','ip-10-0-0-14.us-west-2.compute.internal','ip-10-0-0-25.us-west-2.compute.internal']
 node.default['zookeeper-cluster']['zoo_bag']['ensemble'] = bag
@@ -190,7 +190,7 @@ include_recipe zookeeper-cluser::default
 
 and adding `depends zookeeper-cluster` in metadata.rb. I'm not 100% sure right now if I put in those hostnames correctly since the example was just `node['fqdn']` where fdnq is supposed to match the hostnames exactly. The kafka-cluster cookbook suggests that all I need to do at this point is add the following to my wrapper cookbook recipes/default.rb :
 
-```
+```ruby
 node.default['kafka-cluster']['config']['properties']['broker.id'] = node['ipaddress'].rpartition('.').last
 node.default['kafka-cluster']['config']['properties']['zookeeper.connect'] = bag['ensemble'].map { |m| "#{m}:2181"}.join(',').concat('/kafka')
 include_recipe 'kafka-cluster::default'
@@ -202,7 +202,7 @@ Odd aside trying to knife install the kafka-cluster cookbook--It depends on a de
 
 Back to my confusion about how to set up this wrapper cookbook for zookeeper-cluster and kafka-cluster. I actually think I might be wrong about recipes/default.rb. I think it should be:
 
-```
+```ruby
 bag = data_bag_item('zoo_bag', 'zookeeper')[node.chef_environment]
 node.default['zookeeper-cluster']['config']['instance_name'] = node['ip-10-0-0-5.us-west-2.compute.internal','ip-10-0-0-14.us-west-2.compute.internal','ip-10-0-0-25.us-west-2.compute.internal']
 node.default['zookeeper-cluster']['config']['ensemble'] = bag
@@ -219,7 +219,7 @@ It doesn't make a whole lot of sense because of how `.rpartition()` works, and t
 
 Ok, Bastian pointed me towards [this doc](https://docs.chef.io/ohai.html) about Ohai, which is a set of functions that grab system info from the current node. that means the correct syntax for this wrapper recipe would be:
 
-```
+```ruby
 bag = data_bag_item('zoo_bag', 'zookeeper')[node.chef_environment]
 node.default['zookeeper-cluster']['config']['instance_name'] = node['hostname']
 node.default['zookeeper-cluster']['config']['ensemble'] = bag
@@ -308,7 +308,7 @@ I think this means my data bag is being read, but there is this type error where
 
 Siobahn helped me big time. He helped me reason that the object `bag` is an array of strings (my cluster's ip addresses), and so `bag['ensemble']` doesn't actually make sense. You can't find the item in the list at the index "ensemble". This codebase has proven to be REALLY difficult to work with, but I'm glad I've been able to stick with it and fix these issues. The corrected code is:
 
-```
+```ruby
 bag = data_bag_item('config', 'zookeeper-cluster')[node.chef_environment]
 node.default['zookeeper-cluster']['config']['instance_name'] = node['ipaddress']
 node.default['zookeeper-cluster']['config']['ensemble'] = bag
@@ -365,6 +365,65 @@ Ok cool, I just got a checksum mismatch, which means the url was good but maybe 
 
 This indicates the checksum on the content starts with 7ced79. But, I have to try the checksum calculated directly from apache. Yeah, as expected, it didn't work. This is confusing because I literally downloaded the file from apache and from the mirror and calculated their sha1 checksums and they matched. Is the download actually getting fooled by an attacker? Highly doubtful. Also, why does the calculated checksum on the apache download https://apache.org/dist/zookeeper/zookeeper-3.4.13/zookeeper-3.4.13.tar.gz not match the checksum they have posted https://apache.org/dist/zookeeper/zookeeper-3.4.13/zookeeper-3.4.13.tar.gz.sha1 ? These are some shenanigans. I'm just going to try a different mirror locally and see if I'm getting the same issue. I'm trying the mirror from [university of utah](http://apache.cs.utah.edu/zookeeper/zookeeper-3.4.13/) and getting exactly the same checksum `a69f459f36da3760a2bbcc52e7bb29b08c5ce350`. This [libartifact cookbook readme](https://github.com/johnbellone/libartifact-cookbook/blob/744e4804f96d4e649d6eac0f0ad281a9fea66006/README.md) indicates that the sha256 algorithm is being used to calculate the checksum. That algorithm gives '91e9b0ba1c18a8d0395a1b5ff8e99ac59b0c19685f9597438f1f8efd6f650397', which still doesn't contain 7ced79, but I'll try it anyway and then put this down for the weekend. Yep, same error. Putting this down for now and I'll see what Bastian says on Monday.
 
+I'm going to replace the libartifact code in zookeeper-cluster/libraries/zookeeper_service.rb:
+
+```ruby
+libartifact_file "zookeeper-#{new_resource.version}" do
+artifact_name 'zookeeper'
+artifact_version new_resource.version
+install_path new_resource.install_path
+remote_url new_resource.binary_url % { version: new_resource.version }
+remote_checksum new_resource.binary_checksum
+only_if { new_resource.install_method == 'binary' }
+end
+```
+with this code from poise-archive that downloads and unpacks packages:
+```ruby
+poise_archive new_resource.binary_url % { version: new_resource.version } do
+destination new_resource.install_path
+end
+```
+
+This should get around the checksum. Checksum is not mentioned in the repo other than here and a default attribute in /attributes/defaults.rb. This does make this slightly less secure, but I've verified manually that the checksum from the columbia site matches other mirrors and apache itself, so I'm going to go ahead with it. Progress! Zookeeper appears to have successfully installed. Kafka-cluster, on the other hand is still using this deprecated libartifact checksum business. I just need to make the same change to kafka-cluster/libraries/kafka-service.rb and double check that the download url is good.
+
+It looks like the [github](https://github.com/bloomberg/kafka-cookbook) for the kafka-cluster-cookbook is slightly updated from the [chef supermarket version I pulled](https://supermarket.chef.io/cookbooks/kafka-cluster#knife), so I need to add the scala version as an attribute in kafka-cluster/libraries/kafka-service.rb:
+
+```ruby
+      # @!attribute scala_version
+      # @return [String]
+      attribute(:scala_version, kind_of: String, required: true)
+...
+      def current_path
+        ::File.join(install_path, 'kafka', 'current', "kafka_#{scala_version}-#{version}")
+      end
+```
+
+This might be a lesson to me that the associated github repo of a supermarket recipe will tend to be more up to date and better documented than the chef supermarket version. I'm getting a key error now that the key{scala_version}. It looks like the default scala version needs also to be set in kafka-cluster/attributes/default.rb:
+
+```ruby
+default['kafka-cluster']['service']['scala_version'] = '2.11'
+```
+
+I'm still getting the same key error, but I don't yet understand why. I grep'd "scala_version", and it's showing up in all the correct places. I'm wondering now that the URL requires 2 inputs, `scala_version` and `version`, maybe I need the pose_archive function to be:
+
+```ruby
+poise_archive new_resource.binary_url % { scala_version: new_resource.scala_version }% { version: new_resource.version } do
+destination new_resource.install_path
+end
+```
+New error that sheds some light! Now the error is that it can't find key{ version }. This could be something to do with string formatting in Ruby. I'm not sure why I thought that would work. The string formatting is the same as python (although `.format{}` is the more pythonic way to do that). It should be:
+
+```ruby
+poise_archive new_resource.binary_url % { scala_version: new_resource.scala_version ,  version: new_resource.version } do
+            destination new_resource.install_path
+end
+```
+
+The reason I assumed it didn't work like this is that the kafka-cluster github didn't actually update this part, event though they added scala_version. I had assumed that they had tested and confirmed that it worked.
+
+WOOHOO! successfully ran `sudo chef-client` to install zookeeper and kafka on all my nodes!! I requested a high-5 from Long and he obliged!
+
+
 
 
 
@@ -398,3 +457,5 @@ I talked with Tao, who developed the pipeline I'm building on, and he gave me so
 + How do I automate "knife bootstrap" to multiple nodes simultaneously? A less manual way would be to craft a bash script that iterates through `knife bootstrap <IPs of kafka nodes> -N kafka-<number of kafka node> -x ubuntu --sudo` for each node. Perhaps I can have them each ssh this command to the chef workstation with terraform's user_data function, so when each comes online, it sends its own IP in the knife command.
 + If I have time later, I need to make Terraform more modular and look more into the aws security group module to open specific ports on specific services.
 + ~~If I have time later, I can automate the chef server and chef workstation setup in Terraform~~ Done!
++ Maybe for automatically bootstrapping the nodes to the chef server, I can have each instance (kafka,spark, cassandra, and flask if I decide to include flask) depend on the chef workstation instance in terraform, and then have it send the knife bootstrap command to the chef workstation when they come online.
++ How does Chef fit in to the "golden AMI" best practice?
