@@ -1,4 +1,3 @@
-#!/usr/bin/env python2
 import config
 import io
 import datetime
@@ -163,9 +162,10 @@ if __name__ == '__main__':
     S3_KEY = config_pool.S3_KEY
     S3_SECRET = config_pool.S3_SECRET
     S3_BUCKET = config_pool.S3_BUCKET
+    S3_REGION = config_pool.S3_REGION
     intraday_fname = config_pool.intraday_fname
 
-    obj_stream = smart_open.smart_open("https://s3-us-west-2.amazonaws.com/"+S3_BUCKET+"/"+intraday_fname)
+    obj_stream = smart_open.smart_open("https://s3-"S3_REGION".amazonaws.com/"+S3_BUCKET+"/"+intraday_fname)
     k=0
     total_size_in_bytes = 0
     start = time.time()

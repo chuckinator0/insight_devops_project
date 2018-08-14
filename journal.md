@@ -86,6 +86,8 @@ knife ssl fetch
 knife client list
 ```
 
+I'm not sure the secure copy `scp` will actually work without setting up `SSH-agent`, so this script might not work as is. The chef server might have to have some manual input.
+
 + Some names:
   + username, first name, last name: admin
   + admin.pem, insight-validator.pem
@@ -456,7 +458,9 @@ The `kafka-run-class.sh` file also doesn't mention replication. Look closer at /
     end
 ```
 
-This appears to put the `--replication-factor` flag into a command on the fly. I didn't get a syntax error with `default['kafka-cluster']['topic']['replication_factor'] = 2`, so I think this code should take the replication factor into account when actually running a topic. It's just difficult to understand because chef shows the changed number of partitions but does not show change of replication factor when running `chef-client`. To see if `default['kafka-cluster']['topic']['replication_factor'] = 2` is actually valid, I changed `replication_factor` to `blahblahblah` and was expecting an error running chef-client. I didn't get an error, so I'm not certain `default['kafka-cluster']['topic']['replication_factor'] = 2` actually sets the replication factor. Apache recommends a replication factor of 2 to 3, so I'm going to go ahead and go into /kafka-cluster/libraries/kafka_topic.rb and change the default attribute for replication factor there:
+This appears to put the `--replication-factor` flag into a command on the fly. I didn't get a syntax error with `default['kafka-cluster']['topic']['replication_factor'] = 2`, so I think this code should take the replication factor into account when actually running a topic. It's just difficult to understand because chef shows the changed number of partitions but does not show change of replication factor when running `chef-client`.
+
+To see if `default['kafka-cluster']['topic']['replication_factor'] = 2` is actually valid, I changed `replication_factor` to `blahblahblah` and was expecting an error running chef-client. I didn't get an error, so I'm not certain `default['kafka-cluster']['topic']['replication_factor'] = 2` actually sets the replication factor. Apache recommends a replication factor of 2 to 3, so I'm going to go ahead and go into /kafka-cluster/libraries/kafka_topic.rb and change the default attribute for replication factor there:
 
 ```
       # Change default replication factor to 2

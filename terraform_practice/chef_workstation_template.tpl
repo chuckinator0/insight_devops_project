@@ -20,6 +20,7 @@ source ~/.bash_profile
 # Make a hidden directory to store keys from chef server
 mkdir ~/chef-repo/.chef
 # Copy keys using secure ssh copy
+# This might require SSH-agent to be run first, but I'm not sure if this can be automated in terraform
 scp ubuntu@10.0.0.20:~/admin.pem /home/ubuntu/chef-repo/.chef/
 scp ubuntu@10.0.0.20:~/insight-validator.pem /home/ubuntu/chef-repo/.chef/
 # Edit knife.rb file in ~/chef-repo/.chef directory

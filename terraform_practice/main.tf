@@ -197,7 +197,8 @@ resource "aws_instance" "chef-test" {
   instance_type = "t2.medium"
   key_name = "${var.keypair_name}"
   count = 1
-  user_data = "${data.template_file.chef_server_template.rendered}"
+  # Using the user_data feature will destroy currently running chef server, so it's commented out for now
+  #user_data = "${data.template_file.chef_server_template.rendered}"
 
   vpc_security_group_ids      = ["${module.vpc.default_security_group_id}", "${module.open-ssh-sg.this_security_group_id}"]
   subnet_id                   = "${module.vpc.public_subnets[0]}"
@@ -208,7 +209,7 @@ resource "aws_instance" "chef-test" {
   }
 }
 
-# Initial configuration bash script for chef server
+# Initial configuration bash script for chef workstation
 data "template_file" "chef_workstation_template" {
   template = "${file("chef_workstation_template.tpl")}"
 }
@@ -219,7 +220,8 @@ resource "aws_instance" "chef-workstation" {
   instance_type = "t2.micro"
   key_name = "${var.keypair_name}"
   count = 1
-  user_data = "${data.template_file.chef_workstation_template.rendered}"
+  # I don't yet know how to get ssh authentication to work during the secure copy scp part of the script
+  #user_data = "${data.template_file.chef_workstation_template.rendered}"
   depends_on = ["aws_instance.chef-test"]
 
   vpc_security_group_ids      = ["${module.vpc.default_security_group_id}", "${module.open-ssh-sg.this_security_group_id}"]

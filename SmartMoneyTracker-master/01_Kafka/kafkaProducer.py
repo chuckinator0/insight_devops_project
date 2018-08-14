@@ -1,4 +1,3 @@
-#!/usr/bin/env python2
 from kafka import KafkaProducer
 import time
 import streaming_intraday
@@ -30,6 +29,7 @@ def main():
     S3_KEY = config_pool.S3_KEY
     S3_SECRET = config_pool.S3_SECRET
     S3_BUCKET = config_pool.S3_BUCKET
+    S3_REGION = config_pool.S3_REGION
     num_record = config_pool.num_record_streamed
     intraday_fname = config_pool.intraday_fname
     bootstrap_servers_address = config_pool.bootstrap_servers_address
@@ -38,7 +38,7 @@ def main():
     ##############################################################
     # create a streaming object from S3 and setup kafka producer
     ##############################################################
-    obj_stream = smart_open.smart_open("https://s3-us-west-2.amazonaws.com/"+S3_BUCKET+"/"+intraday_fname)
+    obj_stream = smart_open.smart_open("https://s3-"+S3_REGION+".amazonaws.com/"+S3_BUCKET+"/"+intraday_fname)
 
     # setup Kafka producer and topic
     # producer = KafkaProducer(bootstrap_servers = [bootstrap_servers_address], 

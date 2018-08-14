@@ -15,4 +15,3 @@ default['kafka-cluster']['service']['binary_url'] = "http://mirror.cc.columbia.e
 
 # Set the number of partitions and the replication factor.
 default['kafka-cluster']['config']['properties']['num.partitions'] = 40
-default['kafka-cluster']['topic']['replication_factor'] = 2
