@@ -1,8 +1,8 @@
-## Journal
+# Journal
 
 This journal is my way of processing what I'm learning and archiving some steps that I might need in the future.
 
-# Getting data into S3
+## Getting data into S3
 
 I have a dropbox link to the data that will be used in the pipeline. Downloading the large file failed multiple times, and I got frustrated, so I figured out how to download the file into an EC2 instance and transfer the file to S3 storage.
 
@@ -22,7 +22,7 @@ The ec2 instance doesn't have access to my local environment variables (I don't 
 
 ```aws s3 cp <file> <bucket>```
 
-# Setting up Chef server
+## Setting up Chef server
 
 I am following [this guide](https://www.digitalocean.com/community/tutorials/how-to-set-up-a-chef-12-configuration-management-system-on-ubuntu-14-04-servers#prerequisites-and-goals) for setting up a chef server and a chef workstation. I realize I've been using my local machine as the chef workstation, but I want to use a remote ec2 instance to be the chef workstation. So I'll have a chef server and a chef workstation in AWS.
 
@@ -109,7 +109,7 @@ It looks like `knife cookbook create <cookbook_name>` doesn't work anymore. We h
 
 instead. It also looks like the command needs to be done from `~/chef-repo/cookbooks` rather than `~/chef-repo` like it says in the guide.
 
-# Using Chef to configure Kafka
+## Using Chef to configure Kafka
 
 I'm currently stuck at the point where I am running the command `sudo chef-client` from within the `kafka-test` node. It turns out that it takes a lot to configre a kafka cluster with chef. I found [this github repo](https://github.com/mthssdrbrg/kafka-cookbook?files=1) that has a pretty clear layout for the recipes, attributes, etc for configuring kafka. It also has an explanation for using custom logic to do a rolling restart of kafka servers so they don't all fail at the same time. This could definitely be helpful for my project.
 
@@ -425,8 +425,45 @@ WOOHOO! successfully ran `sudo chef-client` to install zookeeper and kafka on al
 
 The next step is to get spark streaming and cassandra configured using chef.
 
+After talking with Siobhan, I realize I need to put in a replication factor of 2 and the number of partitions to 40 to the attributes from kafka-cluster/libraries/kafka_topic.rb:
 
-# Using Chef to configure Spark-Streaming
+```ruby
+default['kafka-cluster']['config']['properties']['num.partitions'] = 40
+default['kafka-cluster']['topic']['replication_factor'] = 2
+```
+
+I tried this, but I'm not sure if this actually set the replication factor correctly. I checked `/srv/bin` in my node and found `kafka-topics.sh`, but it didn't have explicit flags for repplication factor:
+
+```
+exec $(dirname $0)/kafka-run-class.sh kafka.admin.TopicCommand "$@"
+```
+
+The `kafka-run-class.sh` file also doesn't mention replication. Look closer at /kafka-cluster/libraries/kafka_topic.rb:
+
+```
+# Builds shell command for managing Kafka topics.
+# @param type [String]
+# @return [String]
+    def command(type)
+      ['kafka-topics.sh', "--#{type}"].tap do |c|
+        c << ['--topic', topic_name]
+        c << ['--zookeeper', [zookeeper].compact.join(',')]
+        c << ['--partitions', partitions] if partitions
+        if type.to_s == 'create'
+          c << ['--replication-factor', replication_factor] if replication_factor
+        end
+      end.flatten.join(' ')
+    end
+```
+
+This appears to put the `--replication-factor` flag into a command on the fly. I didn't get a syntax error with `default['kafka-cluster']['topic']['replication_factor'] = 2`, so I think this code should take the replication factor into account when actually running a topic. It's just difficult to understand because chef shows the changed number of partitions but does not show change of replication factor when running `chef-client`. To see if `default['kafka-cluster']['topic']['replication_factor'] = 2` is actually valid, I changed `replication_factor` to `blahblahblah` and was expecting an error running chef-client. I didn't get an error, so I'm not certain `default['kafka-cluster']['topic']['replication_factor'] = 2` actually sets the replication factor. Apache recommends a replication factor of 2 to 3, so I'm going to go ahead and go into /kafka-cluster/libraries/kafka_topic.rb and change the default attribute for replication factor there:
+
+```
+      # Change default replication factor to 2
+      attribute(:replication_factor, kind_of: Integer, default: 2)
+```
+
+
 
 
 # Terraform Help
@@ -436,12 +473,13 @@ The next step is to get spark streaming and cassandra configured using chef.
 + [AWS security group submodules](https://github.com/terraform-aws-modules/terraform-aws-security-group/tree/master/modules)
 + The machine image I am using is `ami-833e60fb`, which is an Ubuntu 16.04 image with username `ubuntu`.
 + [A nice blogpost series to get started](https://blog.gruntwork.io/a-comprehensive-guide-to-terraform-b3d32832baca)
++ [A good starting point from Insight]()
 
 I plan to look more into the modules to make sure that each service has sensible security groups.
 
 I just added the bash scripts for setting up the chef server and workstation. I set the workstation to depend on the initialization of the chef server. This should automatically set up the chef server and workstation as opposed to when I did everything manually in the first setup.
 
-# Pipeline Details
+## Pipeline Details
 
 I talked with Tao, who developed the pipeline I'm building on, and he gave me some configuration details for his infrastructure:
 + He gave me a config.py file that has some configuration information for kafka and spark
@@ -453,7 +491,7 @@ I talked with Tao, who developed the pipeline I'm building on, and he gave me so
   + pyspark, cassandra-driver "and one kafka-spark connector "(sorry I forgot which one I used...)"
   + kafka 40 partitions and 2 replications
 
-# Misc Questions and thoughts
+## Misc Questions and thoughts
 
 + How can I use a bash script when ssh'ing through multiple machines?
 + How do I automate "knife bootstrap" to multiple nodes simultaneously? A less manual way would be to craft a bash script that iterates through `knife bootstrap <IPs of kafka nodes> -N kafka-<number of kafka node> -x ubuntu --sudo` for each node. Perhaps I can have them each ssh this command to the chef workstation with terraform's user_data function, so when each comes online, it sends its own IP in the knife command.

@@ -12,3 +12,7 @@ default['zookeeper-cluster']['service']['binary_checksum'] = '91e9b0ba1c18a8d039
 default['kafka-cluster']['service']['version'] = '1.0.0'
 default['kafka-cluster']['service']['scala_version'] = '2.11'
 default['kafka-cluster']['service']['binary_url'] = "http://mirror.cc.columbia.edu/pub/software/apache/kafka/%{version}/kafka_%{scala_version}-%{version}.tgz"
+
+# Set the number of partitions and the replication factor.
+default['kafka-cluster']['config']['properties']['num.partitions'] = 40
+default['kafka-cluster']['topic']['replication_factor'] = 2
