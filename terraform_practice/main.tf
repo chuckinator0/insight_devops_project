@@ -146,12 +146,18 @@ resource "aws_instance" "spark-master" {
   }
 }
 
+# Initial configuration bash script for chef server
+data "template_file" "spark_template" {
+  template = "${file("spark_template.tpl")}"
+}
+
 # Provision spark-streaming workers
 resource "aws_instance" "spark-workers" {
   ami = "${lookup(var.amis, var.aws_region)}"
   instance_type = "m4.large"
   key_name = "${var.keypair_name}"
   count = 3
+  user_data = "${data.template_file.spark_template.rendered}"
 
   vpc_security_group_ids      = ["${module.vpc.default_security_group_id}","${module.open-ssh-sg.this_security_group_id}"]
   subnet_id                   = "${module.vpc.public_subnets[0]}"

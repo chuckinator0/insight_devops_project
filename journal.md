@@ -22,6 +22,8 @@ The ec2 instance doesn't have access to my local environment variables (I don't 
 
 ```aws s3 cp <file> <bucket>```
 
+I also found [this github](https://github.com/surma/s3put) that explains the `s3put` command, which may be of use as well.
+
 ## Setting up Chef server
 
 I am following [this guide](https://www.digitalocean.com/community/tutorials/how-to-set-up-a-chef-12-configuration-management-system-on-ubuntu-14-04-servers#prerequisites-and-goals) for setting up a chef server and a chef workstation. I realize I've been using my local machine as the chef workstation, but I want to use a remote ec2 instance to be the chef workstation. So I'll have a chef server and a chef workstation in AWS.
@@ -467,10 +469,30 @@ To see if `default['kafka-cluster']['topic']['replication_factor'] = 2` is actua
       attribute(:replication_factor, kind_of: Integer, default: 2)
 ```
 
+## Spark Streaming Cluster
+
+Spark seems to have a nice built-in standalone manager for managing clusters, which I'm reading about in [this documentation](https://spark.apache.org/docs/latest/spark-standalone.html). I can put a short script in the user_data of Terraform to update, install pyspark, and set the master node for the spark streaming cluster. I whipped up a simple script to update and install pyspark and cassandra-river on spark instances:
+
+```
+#!/bin/bash
+
+# update spark instance
+sudo apt-get update        # Fetches the list of available updates
+sudo apt-get upgrade       # Strictly upgrades the current packages
+sudo apt-get dist-upgrade  # Installs updates (new ones)
+
+# update pip
+sudo pip install --upgrade pip
+
+# install pyspark
+sudo pip install pyspark
+
+# install cassanda-driver for connecting to cassandra database
+sudo pip install cassandra-driver
+```
 
 
-
-# Terraform Help
+## Terraform Help
 
 + [VPC module documentation](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/1.30.0)
 + [AWS security group module documentation](https://registry.terraform.io/modules/terraform-aws-modules/security-group/aws/1.9.0)
@@ -503,3 +525,4 @@ I talked with Tao, who developed the pipeline I'm building on, and he gave me so
 + ~~If I have time later, I can automate the chef server and chef workstation setup in Terraform~~ Done!
 + Maybe for automatically bootstrapping the nodes to the chef server, I can have each instance (kafka,spark, cassandra, and flask if I decide to include flask) depend on the chef workstation instance in terraform, and then have it send the knife bootstrap command to the chef workstation when they come online.
 + How does Chef fit in to the "golden AMI" best practice?
++ When defining the `zoo_bag` data bag for zookeeper, is there a way to generate this data bag from terraform outputs and put it on the chef server instead of manually declaring the IP addresses of the zookeeper cluster?
