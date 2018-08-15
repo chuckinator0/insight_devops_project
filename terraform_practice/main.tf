@@ -146,7 +146,7 @@ resource "aws_instance" "spark-master" {
   }
 }
 
-# Initial configuration bash script for chef server
+# Initial configuration bash script for downloading and installing spark and pyspark
 data "template_file" "spark_template" {
   template = "${file("spark_template.tpl")}"
 }

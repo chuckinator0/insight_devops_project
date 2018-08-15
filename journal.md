@@ -469,6 +469,8 @@ To see if `default['kafka-cluster']['topic']['replication_factor'] = 2` is actua
       attribute(:replication_factor, kind_of: Integer, default: 2)
 ```
 
+For the demo, I can start with some fresh instances, add all the nodes to the chef server, and then ssh into one and do `whereis kafka` and `whereis zookeeper` and show the contents of zoo.properties.
+
 ## Spark Streaming Cluster
 
 Spark seems to have a nice built-in standalone manager for managing clusters, which I'm reading about in [this documentation](https://spark.apache.org/docs/latest/spark-standalone.html). I can put a short script in the user_data of Terraform to update, install pyspark, and set the master node for the spark streaming cluster. I whipped up a simple script to update and install pyspark and cassandra-river on spark instances:

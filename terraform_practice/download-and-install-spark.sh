@@ -9,15 +9,6 @@ sudo apt-get update
 # Install basic environment
 sudo apt-get --yes --force-yes install ssh rsync openjdk-8-jdk scala python-dev python-pip python-numpy python-scipy python-pandas gfortran git supervisor ruby bc
 
-# update pip
-sudo pip install --upgrade pip
-
-# install pyspark
-sudo pip install pyspark
-
-# install cassanda-driver for connecting to cassandra database
-sudo pip install cassandra-driver
-
 # Install sbt for scala
 wget https://dl.bintray.com/sbt/debian/sbt-0.13.7.deb -P ~/Downloads
 sudo dpkg -i ~/Downloads/sbt-*
@@ -50,8 +41,8 @@ SPARK_HADOOP_VER=2.7
 
 # Set file paths
 HOME_DIR=/usr/local
-HADOOP_URL=$S3_BUCKET/hadoop/hadoop-$HADOOP_VER.tar.gz
-SPARK_URL=$S3_BUCKET/spark/spark-$SPARK_VER-bin-hadoop$SPARK_HADOOP_VER.tgz
+HADOOP_URL=${S3_BUCKET}/hadoop/hadoop-$HADOOP_VER.tar.gz
+SPARK_URL=${S3_BUCKET}/spark/spark-$SPARK_VER-bin-hadoop$SPARK_HADOOP_VER.tgz
 
 # Download and install Hadoop
 curl -sL $HADOOP_URL | gunzip | sudo tar xv -C /usr/local >> ~/peg_log.txt
@@ -68,4 +59,3 @@ echo "export SPARK_HOME=/usr/local/spark" | cat >> ~/.profile
 echo -e "export PATH=\$PATH:\$SPARK_HOME/bin\n" | cat >> ~/.profile
 sudo chown -R ubuntu /usr/local/spark
 eval "echo \$SPARK_VER" >> /usr/local/spark/tech_ver.txt
-
