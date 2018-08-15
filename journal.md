@@ -1,4 +1,4 @@
-# Journal
+# Journal -- A Winding Road
 
 This journal is my way of processing what I'm learning and archiving some steps that I might need in the future.
 
@@ -97,7 +97,7 @@ I'm not sure the secure copy `scp` will actually work without setting up `SSH-ag
   + organization short name: insight
   + organization long name: "Chuck Insight Project"
 
-There was a slight wrinkle during the workstation setup. when using the command `knife.rb` file and using the `knife client list` command, I had to specify the chef server IP address `ip-10-0-0-20.us-west-2.compute.internal` rather than just `10.0.0.20`.
+There was a slight wrinkle during the workstation setup. when using the command `knife.rb` file and using the `knife client list` command, I had to specify the chef server hostname `ip-10-0-0-20.us-west-2.compute.internal` rather than just the IP address `10.0.0.20`.
 
 To bootstrap the kafka-test machine as a chef client, I had to make sure I was in the /chef-repo and use the command
 
@@ -214,7 +214,7 @@ include_recipe zookeeper-cluser::default
 ```
 The 'config' and 'instance_name' are computed within the zookeeper-cluster default recipe. I thought those corresponded to the data bag, but the data bag is dealt with in the first line. I'm still not sure whether the instance name should be a list. I'm going to try using lists in those lines like so:
 
-```
+```ruby
 node.default['zookeeper-cluster']['config']['instance_name'] = node['ip-10-0-0-5.us-west-2.compute.internal','ip-10-0-0-14.us-west-2.compute.internal','ip-10-0-0-25.us-west-2.compute.internal']
 ...
 node.default['kafka-cluster']['config']['properties']['broker.id'] = node['10.0.0.5','10.0.0.14','10.0.0.25'].rpartition('.').last
@@ -259,7 +259,7 @@ Ok, it worked for kafka-cluster, but I need to do the same with zookeeper-cluste
 
 Ok, now to edit my kafka nodes to run my wrapper cookbook `insight-kafka-cluster`, which depends on the zookeeper-cluster and kafka-cluster cookbooks using `knife edit node <node name>` (oops, I needed to get back to the chef-repo/ directory to run that command). I edited each of the nodes. Again, I'm not sure how I would automate this part. I think these node profiles exist on the chef server, so perhaps to automate I could send a command to the chef server directly that overwrites these files with the proper contents? There are details there to figure out. Nodes are edited. All that is required is to run `sudo chef-client`.
 
-Well, after fixing a typo, I'm getting this error when running sudo chef-client:
+Well, I'm getting this error when running sudo chef-client:
 
 ```undefined method `[]' for nil:NilClass```
 
@@ -299,7 +299,7 @@ node.default['zookeeper-cluster']['config']['ensemble'] = bag['ensemble']
 
 The call to bag['ensemble'] results in a nil []. This means I need to go back and change the data bag back to the hostnames like before and fix this bag['ensemble'] line.
 
-Ok, that didn't work. Now there's an error on that line I just edited. Now I'm wondering whether this all has to do with `bag = data_bag_item('zoo_bag', 'zookeeper')[node.chef_environment]`. In data_bag_item('zoo_bag','zookeeper'), there is a single environment called "develoment", and I'm wondering now whether that environment is not being used and the resulting list of hostnames is reading as empty. I'm reading about chef environments and I dont think I defined any environments along the way, so there should just be the `_default` environment. I understand in real life there would be dev, prod, and other environments, but for now, I'm just going to change the zoo_bag item to use the `_default` enviroment.
+Ok, that didn't work. Now there's an error on that line I just edited. Now I'm wondering whether this all has to do with `bag = data_bag_item('zoo_bag', 'zookeeper')[node.chef_environment]`. In data_bag_item('zoo_bag','zookeeper'), there is a single environment called "development", and I'm wondering now whether that environment is not being used and the resulting list of hostnames is reading as empty. I'm reading about chef environments and I dont think I defined any environments along the way, so there should just be the `_default` environment. I understand in real life there would be dev, prod, and other environments, but for now, I'm just going to change the zoo_bag item to use the `_default` enviroment.
 
 AHA! Different error this time:
 
@@ -310,7 +310,7 @@ no implicit conversion of String into Integer
 
 I think this means my data bag is being read, but there is this type error where it's expecting an integer but getting a string. I'll change back to ip addresses in the data bag item? Nope. Maybe the ip addresses shouldn't be strings? Nope, it wouldnt even let me save the zoo_bag item in that condition.
 
-Siobahn helped me big time. He helped me reason that the object `bag` is an array of strings (my cluster's ip addresses), and so `bag['ensemble']` doesn't actually make sense. You can't find the item in the list at the index "ensemble". This codebase has proven to be REALLY difficult to work with, but I'm glad I've been able to stick with it and fix these issues. The corrected code is:
+Siobahn helped me big time. She helped me reason that the object `bag` is an array of strings (my cluster's ip addresses), and so `bag['ensemble']` doesn't actually make sense. You can't find the item in the list at the index "ensemble". This codebase has proven to be REALLY difficult to work with, but I'm glad I've been able to stick with it and fix these issues. The corrected code is:
 
 ```ruby
 bag = data_bag_item('config', 'zookeeper-cluster')[node.chef_environment]
@@ -462,7 +462,7 @@ The `kafka-run-class.sh` file also doesn't mention replication. Look closer at /
 
 This appears to put the `--replication-factor` flag into a command on the fly. I didn't get a syntax error with `default['kafka-cluster']['topic']['replication_factor'] = 2`, so I think this code should take the replication factor into account when actually running a topic. It's just difficult to understand because chef shows the changed number of partitions but does not show change of replication factor when running `chef-client`.
 
-To see if `default['kafka-cluster']['topic']['replication_factor'] = 2` is actually valid, I changed `replication_factor` to `blahblahblah` and was expecting an error running chef-client. I didn't get an error, so I'm not certain `default['kafka-cluster']['topic']['replication_factor'] = 2` actually sets the replication factor. Apache recommends a replication factor of 2 to 3, so I'm going to go ahead and go into /kafka-cluster/libraries/kafka_topic.rb and change the default attribute for replication factor there:
+To see if `default['kafka-cluster']['topic']['replication_factor'] = 2` is actually valid, I changed `replication_factor` to `blahblahblah` and was expecting an error running chef-client. I didn't get an error, so I'm not certain `default['kafka-cluster']['topic']['replication_factor'] = 2` actually sets the replication factor. Apache recommends a replication factor of 2 to 3 for fault tolernce, so I'm going to go ahead and go into /kafka-cluster/libraries/kafka_topic.rb and change the default attribute for replication factor there:
 
 ```
       # Change default replication factor to 2
@@ -491,19 +491,22 @@ sudo pip install pyspark
 sudo pip install cassandra-driver
 ```
 
+After speaking with Cheuk, I learned that orchestrating spark is much more complicated than installing pyspark. I misread the spark download page. I thought installing pyspark would also download spark itself, but spark is separate. It also requires hadoop, and cluster management. Other fellows have done all of this with Insight's in-house configuration tool called Pegasus. I decided to ask around and learn something other than Chef, so I asked Cheuk how he configured his spark cluster. Cheuk borrowed some scripts from the Pegasus source code and shared them with me. First, I would have to [adapt this script](https://github.com/cheuklau/insight_devops_airaware/blob/master/devops/multi_with_asg/packer/scripts/download-and-install-spark.sh) to set up the workers, followed by the master node (the workers need to come first so that the master can find them later). Then, I need to adapt this [terrafrom script](https://github.com/cheuklau/insight_devops_airaware/blob/master/devops/multi_with_asg/terraform/instance.tf).
+
 
 ## Terraform Help
 
 + [VPC module documentation](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/1.30.0)
 + [AWS security group module documentation](https://registry.terraform.io/modules/terraform-aws-modules/security-group/aws/1.9.0)
 + [AWS security group submodules](https://github.com/terraform-aws-modules/terraform-aws-security-group/tree/master/modules)
++ [Nice repository of AWS terraform modules](https://github.com/terraform-aws-modules)
 + The machine image I am using is `ami-833e60fb`, which is an Ubuntu 16.04 image with username `ubuntu`.
 + [A nice blogpost series to get started](https://blog.gruntwork.io/a-comprehensive-guide-to-terraform-b3d32832baca)
 + [A good starting point from Insight]()
 
 I plan to look more into the modules to make sure that each service has sensible security groups.
 
-I just added the bash scripts for setting up the chef server and workstation. I set the workstation to depend on the initialization of the chef server. This should automatically set up the chef server and workstation as opposed to when I did everything manually in the first setup.
+I just added the bash scripts for setting up the chef server and workstation. I set the workstation to depend on the initialization of the chef server. This should automatically set up the chef server and workstation as opposed to when I did everything manually in the first setup. I'm not sure if the ssh secure copy `scp` will work yet.
 
 ## Pipeline Details
 
