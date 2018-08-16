@@ -9,7 +9,7 @@ This guide will help you build a Virtual Private Cloud in Amazon Web Services wi
 
 ## Using Terraform to Initialize a Virtual Private Cloud in AWS
 
-The code in `/terraform_practice/` creates a VPC with subnets, internet gateway, NAT gateway, security groups, elastic IP's, and several EC2 instances. See resource (1) for more information about the anatomy of a VPC. Terraform spins up EC2 instances that would later be configured to be kafka and spark streaming clusters and S3 bucket.
+The code in `./terraform_practice/` creates a VPC with subnets, internet gateway, NAT gateway, security groups, elastic IP's, and several EC2 instances. See resource (1) for more information about the anatomy of a VPC. Terraform spins up EC2 instances that would later be configured to be kafka and spark streaming clusters and S3 bucket.
 
 The `variables.tf` file initiates the variables that will be used. Some examples of variables would be the AWS region (us-west-2 in this case), the keypair required to authenticate into the VPC, and AMI ID's. An AMI Amazon Machine Image) is a pre-baked image of a machine. The AMI used in this project initializes an EC2 instance with the Ubuntu 16.04 operating system. This file merely initializes the vaiables and possibly give some default values, but the values of the variables themselves are declared in `terraform.tfvars`. As a security measure, you should declare your AWS credentials as environment variables in your bash profile of your local machine, and never ever put those credentials on the internet or hard coded in files.
 
@@ -33,7 +33,11 @@ The `-N` option declares the name of the new chef client. The `-x` option is use
 
 ## Using Chef to configure Zookeeper+Kafka
 
-Once you get the nodes from your kafka cluster bootstrapped, you can now use Chef to configure those nodes. Now is the time to talk about how Chef works. The idea is that the chef workstation holds "cookbooks" that contain "recipes", which are Ruby scripts that go through the logic of configuring a resource (for example, automatically downloading, installing, and changing the settings of Kafka)
+Once you get the nodes from your kafka cluster bootstrapped, you can now use Chef to configure those nodes. Now is the time to talk about how Chef works. The idea is that the chef workstation holds "cookbooks" that contain "recipes", which are Ruby scripts that go through the logic of configuring a resource (for example, automatically downloading, installing, and changing the settings of Kafka). One major challenge I faced was building on existing cookbooks that have been used in production (kafka-cluster and zookeeper-cluster cookbooks developed by Bloomberg).  For more on that journey, see `journal.md`. For the basic anatomy of a cookbook, see my cookbook `./chef_practice/insight-kafka-cluster`. This is technically a "wrapper cookbook", which is a cookbook that customizes cookbooks already available. There are many community cookbooks available at the Chef Supermarket, listed at resource (7).
+
+The insight-kafka-cluster cookbook has `recipes` and `attributes`. Recipes are the basic building blocks. Recipes are scripts written in Ruby that contain the logic for configuring a system. For example, the download URL for a specific piece of software may depend on the operating system of the current node. In Ruby, it would be possible to write `if else` statements to address this. Attributes are used to set various values for the variables that are used, like version number, the number of partitions that Kafka will use, the ports that zookeeper will use to communicate across the cluster, etc. Cookbooks can build on each other and be reused in many contexts, which makes them versatile, but can also lead to dependency sprawl. Chef handles this with a special file called a Berksfile.
+
+Note that `./chef_practice/insight-kafka-cluster/metadata.rb`
 
 ## Background Resources
 1. [AWS VPC infrastructure overview](https://start.jcolemorrison.com/aws-vpc-core-concepts-analogy-guide/#the-vpc)
@@ -42,3 +46,4 @@ Once you get the nodes from your kafka cluster bootstrapped, you can now use Che
 4. [Terraform modules for AWS](https://github.com/terraform-aws-modules)
 5. [Chef Server + Workstation tutorial](https://www.digitalocean.com/community/tutorials/how-to-set-up-a-chef-12-configuration-management-system-on-ubuntu-14-04-servers#prerequisites-and-goals)
 6. [ssh tutorial](https://www.digitalocean.com/community/tutorials/ssh-essentials-working-with-ssh-servers-clients-and-keys)
+7. [Chef Supermarket of Community Cookbooks](https://supermarket.chef.io)
