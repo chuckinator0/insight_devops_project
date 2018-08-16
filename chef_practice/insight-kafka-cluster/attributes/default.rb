@@ -13,5 +13,5 @@ default['kafka-cluster']['service']['version'] = '1.0.0'
 default['kafka-cluster']['service']['scala_version'] = '2.11'
 default['kafka-cluster']['service']['binary_url'] = "http://mirror.cc.columbia.edu/pub/software/apache/kafka/%{version}/kafka_%{scala_version}-%{version}.tgz"
 
-# Set the number of partitions and the replication factor.
+# Set the number of partitions.
 default['kafka-cluster']['config']['properties']['num.partitions'] = 40
