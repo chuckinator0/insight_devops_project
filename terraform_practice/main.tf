@@ -130,6 +130,7 @@ resource "aws_instance" "spark-master" {
   ami = "${lookup(var.amis, var.aws_region)}"
   instance_type = "m4.large"
   key_name = "${var.keypair_name}"
+  user_data = "${data.template_file.spark_template.rendered}"
 
   vpc_security_group_ids      = ["${module.vpc.default_security_group_id}","${module.open-ssh-sg.this_security_group_id}"]
   subnet_id                   = "${module.vpc.public_subnets[0]}"
