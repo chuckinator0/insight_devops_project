@@ -37,7 +37,19 @@ Once you get the nodes from your kafka cluster bootstrapped, you can now use Che
 
 The insight-kafka-cluster cookbook has `recipes` and `attributes`. Recipes are the basic building blocks. Recipes are scripts written in Ruby that contain the logic for configuring a system. For example, the download URL for a specific piece of software may depend on the operating system of the current node. In Ruby, it would be possible to write `if else` statements to address this. Attributes are used to set various values for the variables that are used, like version number, the number of partitions that Kafka will use, the ports that zookeeper will use to communicate across the cluster, etc. Cookbooks can build on each other and be reused in many contexts, which makes them versatile, but can also lead to dependency sprawl. Chef handles this with a special file called a Berksfile.
 
-Note that `./chef_practice/insight-kafka-cluster/metadata.rb`
+Note that `./chef_practice/insight-kafka-cluster/metadata.rb` declares dependencies on the two underlying cookbooks `zookeeper-cluster` and `kafka-cluster`. Also note that in `./chef_practice/insight-kafka-cluster/recipes/default.rb` contains these lines:
+
+```ruby
+...
+include_recipe 'zookeeper-cluster::default'
+...
+include_recipe 'kafka-cluster::default'
+```
+
+So, the dependencies are in the recipe and the metadata, and the Berksfile is used to look at those dependencies in the metadata and recursively install all the contingent cookbooks all the way down. If you secure copy `scp` the three cookbooks (insight-kafka-cluster, kafka-cluster, and zookeeper-cluster) into the chef workstation at `~/chef-repo/cookbooks`, change directory into the `insight-kafka-cluster` cookbook, and run the command `berks install` and `berks upload`, it should recursively install all contingent cookbooks and upload them to the chef server. All that is left to do is apply the command `sudo chef-client` on each node in the kafka cluster. Then, zookeeper and kafka are configured for master-worker communication.
+
+The `attributes` directory of each cookbook is a place where you can set the values for the various settings that the cookbook configures. Setting these attributes in the wrapper cookbook, insight-kafka-cluster, will override the cookbooks underneath it.
+
 
 ## Background Resources
 1. [AWS VPC infrastructure overview](https://start.jcolemorrison.com/aws-vpc-core-concepts-analogy-guide/#the-vpc)
