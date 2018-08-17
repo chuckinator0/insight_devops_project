@@ -51,6 +51,32 @@ So, the dependencies are in the recipe and the metadata, and the Berksfile is us
 The `attributes` directory of each cookbook is a place where you can set the values for the various settings that the cookbook configures. Setting these attributes in the wrapper cookbook, insight-kafka-cluster, will override the cookbooks underneath it.
 
 
+## Tao Hong's Smart Money Tracker
+
+I included previous Insight Data Engineering Fellow [Tao Hong's data pipeline](https://github.com/hongtao510/SmartMoneyTracker) to toy around with. It's possible to simulate his financial data from his description of the schema in his scripts. There is a missing config file that takes the following form (taken from his project):
+
+```python
+class Config:
+	# bootstrap_servers_address = ['52.37.84.255:9092', '52.11.105.41:9092', '54.70.27.179:9092']
+	bootstrap_servers_address = 'localhost:9092'
+	bootstrap_servers_ipaddress = '52.41.88.112:9092'
+	kafka_topic = 'th-topic'	# kafka topic
+	ss_interval = 10 			# Sparkstreaming interval
+	cass_cluster_IP = ['35.155.197.36', '54.186.193.198', '34.212.250.239']
+	
+	# Use environment variables
+	S3_KEY = "XXXXX"
+	S3_SECRET = "XXXXX"
+	S3_REGION = "us-west-2"
+	
+	# Updated S3 bucket name is chuck-financial-data
+	S3_BUCKET = "chuck-financial-data"
+	
+	num_record_streamed = 2000000000000000000  			# number of records streamed from s3
+	intraday_fname = "intraday_subset_sort_quote.csv"  	# streaming filename on s3
+	eod_fname = "eod_summary_withoutzeros.csv"  		# endofday filename on s3, benchmark
+```
+
 ## Background Resources
 1. [AWS VPC infrastructure overview](https://start.jcolemorrison.com/aws-vpc-core-concepts-analogy-guide/#the-vpc)
 2. [Comprehensive guide to Terraform](https://blog.gruntwork.io/a-comprehensive-guide-to-terraform-b3d32832baca)
