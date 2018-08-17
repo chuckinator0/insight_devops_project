@@ -1,3 +1,4 @@
 source 'https://supermarket.chef.io'
-
+cookbook "kafka-cluster", path: "../kafka-cluster"
+cookbook "zookeeper-cluster", path: "../zookeeper-cluster"
 metadata
