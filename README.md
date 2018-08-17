@@ -63,7 +63,9 @@ Now that the cookbooks are uploaded, it is important for zookeeper to get a list
 
 In Chef, you can set different chef environments on your chef server like "development", "production," or in this case, "\_default". This is the environment that is set by default by the chef server.
 
-The cookbooks are in place, and the zoo_bag is populated with the IP's. All that is left to do is apply the command `sudo chef-client` on each node in the kafka cluster. Then, zookeeper and kafka are configured for master-worker communication. The `attributes` directory of each cookbook is a place where you can set the values for the various settings that the cookbook configures. Setting these attributes in the wrapper cookbook, insight-kafka-cluster, will override the cookbooks underneath it.
+The `attributes` directory of each cookbook is a place where you can set the values for the various settings that the cookbook configures. Setting these attributes in the wrapper cookbook, insight-kafka-cluster, will override the cookbooks underneath it. So, to customize what settings you'd like, look at the `attributes/default.rb` files in each cookbook, and set the values you want in the wrapper cookbook (`insight-kafka-cluster/attributes/default.rb`).
+
+The cookbooks are in place, and the zoo_bag is populated with the IP's. All that is left to do is apply the command `sudo chef-client` on each node in the kafka cluster. Then, zookeeper and kafka are configured for master-worker communication.
 
 
 ## Tao Hong's Smart Money Tracker
