@@ -46,7 +46,29 @@ include_recipe 'zookeeper-cluster::default'
 include_recipe 'kafka-cluster::default'
 ```
 
-So, the dependencies are in the recipe and the metadata, and the Berksfile is used to look at those dependencies in the metadata and recursively install all the contingent cookbooks all the way down. If you secure copy `scp` the three cookbooks (insight-kafka-cluster, kafka-cluster, and zookeeper-cluster) into the chef workstation at `~/chef-repo/cookbooks`, change directory into the `insight-kafka-cluster` cookbook, and run the command `berks install` and `berks upload`, it should recursively install all contingent cookbooks and upload them to the chef server.
+So, the dependencies are in the recipe and the metadata, and the Berksfile is used to look at those dependencies in the metadata and recursively install all the contingent cookbooks all the way down. Go ahead and secure copy `scp` the three cookbooks (insight-kafka-cluster, kafka-cluster, and zookeeper-cluster) into the chef workstation at `~/chef-repo/cookbooks`. For each node, we have to add the insight-kafka-cluster cookbook to its runlist with the command
+
+```
+knife node edit <name of node>
+```
+You might need to export your editor first with `export EDITOR=<editor like vim or nano>`. This knife edit will bring up a json file for the node:
+
+```
+{
+  "name": "client1",
+  "chef_environment": "_default",
+  "normal": {
+    "tags": [
+
+    ]
+  },
+  "run_list": [
+    "recipe[insight-kafka-cluster]"
+  ]
+}
+```
+
+To get all the cookbook dependencies straight, run `berks download` while in each of the zookeeper-cluster and kafka-cluster directories to download their contingent cookbooks. Then go to the insight-kafka-cluster cookbook and run `berks install` to recursively install all contingent cookbooks, and `berks upload` to upload all of the necessary cookbooks to the chef server.
 
 Now that the cookbooks are uploaded, it is important for zookeeper to get a list of the IP addresses of all the instances in the cluster. The recipe `recipes/default.rb` mentions a varable called `bag`. Chef uses "data bags" to store sensitive information on the chef server. From the chef workstation, the command `knife data bag create <name of bag> <name of item>` will create a data bag. I did `knife data bag create zoo_bag zookeeper` and made the json for my kafka node host names:
 
@@ -66,6 +88,8 @@ In Chef, you can set different chef environments on your chef server like "devel
 The `attributes` directory of each cookbook is a place where you can set the values for the various settings that the cookbook configures. Setting these attributes in the wrapper cookbook, insight-kafka-cluster, will override the cookbooks underneath it. So, to customize what settings you'd like, look at the `attributes/default.rb` files in each cookbook, and set the values you want in the wrapper cookbook (`insight-kafka-cluster/attributes/default.rb`).
 
 The cookbooks are in place, and the zoo_bag is populated with the IP's. All that is left to do is apply the command `sudo chef-client` on each node in the kafka cluster. Then, zookeeper and kafka are configured for master-worker communication.
+
+There are several parts of this process that would benefit greatly from more automation. I'm still curious to find out how engineers who use Chef a lot would automate the bootstrapping process, changing runlists, editing dat bags dynamically, etc.
 
 
 ## Tao Hong's Smart Money Tracker
