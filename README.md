@@ -118,20 +118,8 @@ class Config:
 	eod_fname = "eod_summary_withoutzeros.csv"  		# endofday filename on s3, benchmark
 ```
 
-## Changing Gears: Learning about Kubernetes Container Management and Orchestration
 
-I decided that I want to round out my understanding of distributed systems deployment by diving deeper into docker and learning about how kubernetes manages containerized applications on a distributed architechture. I am starting fresh from [kubernetes documentation](https://kubernetes.io/docs/tutorials/kubernetes-basics/deploy-app/deploy-intro/). I know a little about docker from my work on the [insight systems puzzle](https://github.com/chuckinator0/systems-puzzle-master), so I'm going to build on that and think about how kubernetes might deploy a docker application in a distributed environment.
 
-Kubernetes Clusters: Kubernetes groups computers together into a cluster. There is a "master" that controlls and coordinates the cluster, and "worker nodes" that run applications. Each worker node is a virtual machine or physical computer. This tutorial uses Minikube as a lightweight kubernetes implementation that sets up a single virtual machine that runs a cluster with a single node.
-
-Create a Deployment: Kubernetes uses the command `kubectl` ("kube control") to deploy a containerized application on a cluster. Once a deployment is created, the kubernetes master schedules the application instances on nodes in the cluster. Then, the Kubernetes Deployment Controller monitors those instances continuously. If a node is deleted or failes, a new node is brought up automatically. In this way, the system heals itself during hardware failure or maintenance. Here are some commands:
-
-+ Run `kubectl get nodes` to see a list of the nodes in the cluster.
-+ Run `kubectl run <deployment name> --image=<full url to image hosted on dockerhub> --port=<port>` to deploy a cluster.
-  + Example: `kubectl run kubernetes-bootcamp --image=gcr.io/google-samples/kubernetes-bootcamp:v1 --port=8080`
-+ Run `kubectl get deployments` to see your deployed clusters.
-
-Pods inside kubernetes are running on a private, separate network from the underlying infrastructure. Pods are visible to other pods and services inside the same cluster, but not outside that network. The `kubectl` command is an API endpoint to communinicate with our application. The `kubectl proxy` command in a different terminal creates a proxy that forwards communications into the cluster's private network.
 
 
 ## Background Resources
