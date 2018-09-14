@@ -536,6 +536,8 @@ I talked with Tao, who developed the pipeline I'm building on, and he gave me so
 
 I decided that I want to round out my understanding of distributed systems deployment by diving deeper into docker and learning about how kubernetes manages containerized applications on a distributed architechture. I am starting fresh from [kubernetes documentation](https://kubernetes.io/docs/tutorials/kubernetes-basics/deploy-app/deploy-intro/). I know a little about docker from my work on the [insight systems puzzle](https://github.com/chuckinator0/systems-puzzle-master), so I'm going to build on that and think about how kubernetes might deploy a docker application in a distributed environment.
 
+### Clusters and Deployments
+
 Kubernetes Clusters: Kubernetes groups computers together into a cluster. There is a "master" that controlls and coordinates the cluster, and "worker nodes" that run applications. Each worker node is a virtual machine or physical computer. This tutorial uses Minikube as a lightweight kubernetes implementation that sets up a single virtual machine that runs a cluster with a single node.
 
 Create a Deployment: Kubernetes uses the command `kubectl` ("kube control") to deploy a containerized application on a cluster. Once a deployment is created, the kubernetes master schedules the application instances on nodes in the cluster. Then, the Kubernetes Deployment Controller monitors those instances continuously. If a node is deleted or fails, a new node is brought up automatically. In this way, the system heals itself during hardware failure or maintenance. Here are some commands:
@@ -569,7 +571,7 @@ Then, we can open a proxy into the node's internal network by running `kubectl p
 Starting to serve on 127.0.0.1:8001
 ```
 
-So we can then access the pod, for example with `curl`:
+Note that even though a node is a single machine or virtual machine, it still has in internal network of pods as far as kubernetes is concerned. That's one hard thing to wrap your mind around at first. Kubernetes has its own network overlay on top of the physical network. Anyway, we can now access the pod through the proxy, for example with `curl`:
 
 ```bash
 curl http://localhost:8001/api/v1/namespaces/default/pods/$POD_NAME/proxy/
@@ -579,13 +581,17 @@ The URL here is the route to the API of the pod.
 
 To open a bash session inside a container in a pod, we can use `kubectl exec -ti $POD_NAME bash`. The `-i` option means "--stdin=false: Pass stdin to the container" and the `-t` option means "--tty=false: Stdin is a TTY". What this basically means is that we are starting a bash session inside the container and it is not connected to the bash session we were using outside the container (from what I gather from googling).
 
+### Kubernetes Services
+
 The next section is about kubernetes' "services". A service is basically a way to connect kubernetes' internal network to the network in which is lives. For example, if you have all your machines in a virtual private cloud (VPC), those machines will have IP addresses, but kubernetes has its own, separate, internal IP addresses for those nodes. Services allow things outside of kubernetes to see inside and interact with the pods. Pods on different nodes can be connected together by the same service, and you can expose that service to something outside of the kubernetes cluster. The service is basically a go-between (API) so you can communicate with pods inside of the cluster from outside of the cluster. In the example, we use the command
 
-```
+```bash
 kubectl expose deployment/kubernetes-bootcamp --type="NodePort" --port 8080
 ```
 
 To create a service that exposes the `kubernetes-bootcamp` deployment on port 8080. The command `kubectl describe services/kubernetes-bootcamp` gives a lot of useful information about the service. In this case, it shows that the NodePort is 30194, so the kubernetes-bootcamp service is exposing 30194 to the world outside the cluster while reaching in through port 8080 inside the cluster. We can now communicate with the pod through the service with `curl $NODE_IP:30194`, where `$NODE_IP` is the IP address of the node itself (outside of the cluster). If you destroy the service, you won't be able to reach that pod's output outside of the cluster, but you can still use `kubectl exec -ti $POD_NAME curl localhost:8080` to see the output from inside the cluster with `kubectl`.
+
+### Scaling with Replicas
 
 The next part is about scaling and balancing a deployment. This command makes replicas of your deployment:
 
@@ -605,4 +611,56 @@ And then we can repeatedly make requests using `curl $(minikube ip):$NODE_PORT` 
 
 We can scale down the replicas now with `kubectl scale deployments/kubernetes-bootcamp --replicas=2`. There are more advanced features that enable autoscaling using health checks (i.e. increase replicas up to a max number if CPU utilization is greater than x%, and decrease replicas down to a minimum number if CPU drops below y% ), but this tutorial hasn't gotten there yet.
 
-The last section is about doing rolling updates, which is nice because you can make updates without taking anything offline. The app is still available the whole time.
+### Rolling Updates
+
+The last section is about doing rolling updates, which is nice because you can make updates without taking anything offline. The app is still available the whole time. In particular, rolling updates allow these actions:
++ promote an application from one environment to another with container image updates
++ rollback to previous versions
++ continuous integration and delivery of applications with zero downtime
+
+The first part of the tutorial module had us use this command to update to a new version of the `kubernetes-bootcamp` app:
+
+```bash
+kubectl set image deployments/kubernetes-bootcamp kubernetes-bootcamp=jocatalin/kubernetes-bootcamp:v2
+```
+
+The `set image` command sets the image of the containers in our pods to version 2. Kubernetes then does a rollout that takes down all of v1 pods and puts up v2 pods without interrupting service.
+
+Next, we can use `kubectl describe services/kubernetes-bootcamp` to see the service that allows us to communicate with the cluster. This command shows us the nodePort so we can reach into the cluster and communicate with the pods. We again export a variable we will call NODE_PORT:
+
+```bash
+export NODE_PORT=$(kubectl get services/kubernetes-bootcamp -o go-template='{{(index .spec.ports 0).nodePort}}')
+```
+
+And then we can `curl` from the exposed port with `curl $(minikube ip):$NODE_PORT` to see the http output from the app. This output tells us that the pods are on version 2, and by running the command multiple times, we verify that kubernetes is load balancing among the various pods in the replica set. The command `kubectl rollout status deployments/kubernetes-bootcamp` tells us that the rollout of the new version was successful.
+
+Ok, now to practice rolling back from an update. Let's say we update to so-called v10 by using a new container image:
+
+```bash
+kubectl set image deployments/kubernetes-bootcamp kubernetes-bootcamp=gcr.io/google-samples/kubernetes-bootcamp:v10
+```
+
+This time, the pods aren't responding correctly. Using `kubectl get deployments`, we see there are only 3 pods available. When we `kubectl get pods`, we see the message "ImagePullBackoff" on two of the pods. For more insights, we use `kubectl describe pods`. We see that the failing pods are encountering an error pulling the image. We see an error message in the event log:
+
+```
+Failed to pull image "gcr.io/google-samples/kubernetes-bootcamp:v10": rpc error: code = Unknown desc = unauthorized: authentication required
+```
+
+In this case, the error occured because there is no v10 in the container repository we're pulling from. We can roll back with:
+
+```bash
+kubectl rollout undo deployments/kubernetes-bootcamp deployment.apps "kubernetes-bootcamp"
+```
+
+This `rollout undo` will revert us back to the last known stable version, which was v2. We can check the versions of the images by describing the pods and then searching for 'image' with `grep`: `kubectl describe pods | grep -i image`. Indeed, there are 4 running pods all on version 2.
+
+
+
+
+
+
+
+
+
+
+
