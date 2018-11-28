@@ -1,6 +1,8 @@
 # Larrieu_IaC_CM_project
 Infrastructure as Code and Configuration Management Project
 
+Presentation slides: [https://drive.google.com/open?id=1SU4ebpfrdRY1qqUKOix5WY_tuTL1EC_qez8b8LWo4sQ](https://drive.google.com/open?id=1SU4ebpfrdRY1qqUKOix5WY_tuTL1EC_qez8b8LWo4sQ)
+
 ## Introduction
 
 Over time, the world of software development has moved from code on one local machine to an app hosted on one big server, and now to many services interacting on many servers in complex cloud architectures. To manage this progression, tools like Terraform have been developed to bring up the servers and connect them to each other based on the needs of the application, and tools like Chef have been developed to make sure that those servers get the right software installed with the right configuration automatically. Before tools like these, system administrators had to do all of this manually, which was slow, error prone, and impossible to scale to the distributed systems that exist in production today.
